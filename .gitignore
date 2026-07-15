@@ -1,0 +1,15 @@
+# Bỏ qua file rác của Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Bỏ qua môi trường ảo 
+venv/
+env/
+
+# BỎ QUA DATABASE (Cực kỳ quan trọng)
+*.db
+sqlite.db
+
+# Bỏ qua file biến môi trường (bảo mật)
+.env
