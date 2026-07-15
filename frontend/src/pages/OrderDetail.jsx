@@ -52,8 +52,12 @@ export default function OrderDetail() {
   const [podFile, setPodFile] = useState(null);
   const [isUploadingPod, setIsUploadingPod] = useState(false);
 
+  // ==========================================
+  // WEBSOCKET: BẤT TỬ & AUTO-RECONNECT
+  // ==========================================
   useEffect(() => {
     if (!userInfo) { navigate('/'); return; }
+    
     const initData = async () => {
       setLoading(true);
       await fetchOrderDetails();
@@ -62,14 +66,58 @@ export default function OrderDetail() {
     };
     initData();
 
-    const ws = new WebSocket(`wss://datquang-backend.onrender.com/ws/${userInfo.user_id}/${userInfo.role}`);
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.event === 'new_chat_message' && data.order_id === parseInt(id)) fetchMessages();
-      if (data.event === 'status_changed') fetchOrderDetails();
+    let ws;
+    let pingInterval;
+    let reconnectTimeout;
+
+    const connectWebSocket = () => {
+      ws = new WebSocket(`wss://datquang-backend.onrender.com/ws/${userInfo.user_id}/${userInfo.role}`);
+
+      ws.onopen = () => {
+        console.log("🟢 [Order Detail] Đã kết nối Radar!");
+        // Bơm oxy (Ping) mỗi 30s để Render không ngắt kết nối
+        pingInterval = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: "ping_keep_alive" }));
+          }
+        }, 30000);
+      };
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        
+        // 1. Kích hoạt tải tin nhắn mới ngay lập tức khi có người chat
+        if (data.event === 'new_chat_message' && data.order_id === parseInt(id)) {
+            fetchMessages();
+        }
+        
+        // 2. Kích hoạt đổi trạng thái (Tài xế đang đến, Đã lấy hàng...)
+        if (data.event === 'status_changed') {
+            console.log("⚡ [Real-time] Cập nhật trạng thái đơn hàng!");
+            fetchOrderDetails();
+        }
+      };
+
+      ws.onclose = () => {
+        console.log("🔴 [Order Detail] Mất sóng. Đang tự động kết nối lại...");
+        clearInterval(pingInterval);
+        // Tự động gọi lại sau 3 giây nếu mạng chập chờn
+        reconnectTimeout = setTimeout(connectWebSocket, 3000);
+      };
     };
-    return () => ws.close();
-  }, [id]);
+
+    connectWebSocket();
+
+    // Dọn dẹp kết nối sạch sẽ khi người dùng thoát khỏi trang chi tiết đơn
+    return () => {
+      clearInterval(pingInterval);
+      clearTimeout(reconnectTimeout);
+      if (ws) {
+        ws.onclose = null;
+        ws.close();
+      }
+    };
+  }, [id, userInfo?.user_id, userInfo?.role]);
 
   useEffect(() => {
     if (userInfo?.role === 'customer' && orderDetails?.order?.status === 'completed' && !orderDetails?.order?.rating) {
@@ -182,14 +230,12 @@ export default function OrderDetail() {
   };
 
   // =========================================================
-  // [ĐÃ SỬA] Ép Google Maps dẫn đường theo tọa độ GPS chính xác
+  // Ép Google Maps dẫn đường theo tọa độ GPS chính xác
   // =========================================================
   const openGoogleMapsTo = (lat, lng, fallbackAddress) => {
     if (lat && lng && lat !== 0 && lng !== 0) {
-      // Dẫn đường thẳng đến tọa độ GPS
       window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`, '_blank');
     } else {
-      // Dùng chữ nếu đơn hàng cũ không có lưu tọa độ
       window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(fallbackAddress)}&travelmode=driving`, '_blank');
     }
   };
@@ -283,7 +329,6 @@ export default function OrderDetail() {
 
                   {isDriverOwner && !['completed', 'cancelled'].includes(o.status) && (
                     <div className="mt-2">
-                      {/* [ĐÃ SỬA] TRUYỀN TỌA ĐỘ VÀO NÚT MAP */}
                       <Button size="sm" variant="outline-primary" onClick={() => openGoogleMapsTo(o.pickup_lat, o.pickup_lng, o.pickup || o.pickup_location)}>
                         🗺️ Dẫn đường Map (GPS)
                       </Button>
@@ -321,7 +366,6 @@ export default function OrderDetail() {
 
                   {isDriverOwner && ['picking_up', 'delivering'].includes(o.status) && (
                     <div className="mt-2">
-                      {/* [ĐÃ SỬA] TRUYỀN TỌA ĐỘ VÀO NÚT MAP */}
                       <Button size="sm" variant="outline-danger" onClick={() => openGoogleMapsTo(o.dropoff_lat, o.dropoff_lng, o.dropoff || o.dropoff_location)}>
                         🗺️ Dẫn đường Map (GPS)
                       </Button>
@@ -449,4 +493,4 @@ export default function OrderDetail() {
 
     </Container>
   );
-} 
+}
