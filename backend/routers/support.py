@@ -20,30 +20,37 @@ def get_support_messages(user_id: int, db: Session = Depends(get_db)):
 
 @router.post("/support/messages")
 async def send_support_message(msg: schemas.SupportMessageCreate, db: Session = Depends(get_db)):
-    # 1. Lưu tin nhắn người gửi
+    # 1. Lưu tin nhắn gốc của người gửi vào Database
     new_msg = models.SupportMessage(user_id=msg.user_id, sender_type=msg.sender_type, content=msg.content)
     db.add(new_msg); db.commit(); db.refresh(new_msg)
 
+    # Nếu Khách hàng nhắn, cho Bot phân tích
     if msg.sender_type == "user":
         text_lower = msg.content.lower()
         bot_reply = next((reply for key, reply in BOT_RESPONSES.items() if key in text_lower), None)
         
         if bot_reply:
-            # 2. Nếu trúng từ khóa -> Bot tự trả lời
+            # 2. Trúng từ khóa -> Bot tự trả lời
             bot_msg = models.SupportMessage(user_id=msg.user_id, sender_type="bot", content=bot_reply)
             db.add(bot_msg); db.commit(); db.refresh(bot_msg)
-            await manager.send_personal_message(json.dumps({"event": "new_support_msg"}), msg.user_id)
         else:
-            # 3. Câu hỏi khó -> Báo chờ & Bắn còi gọi Admin
+            # 3. Câu hỏi khó -> Bot báo chờ và hú còi cấp cứu gọi Admin
             wait_msg = models.SupportMessage(user_id=msg.user_id, sender_type="bot", content="🤖 BOT: Câu hỏi đã được ghi nhận. Nhân viên CSKH sẽ phản hồi bạn trong giây lát...")
             db.add(wait_msg); db.commit(); db.refresh(wait_msg)
             
-            await manager.send_personal_message(json.dumps({"event": "new_support_msg"}), msg.user_id)
+            # Popup báo động cho Admin
             await manager.broadcast(json.dumps({"event": "admin_support_alert", "user_id": msg.user_id}))
-    else:
-        # 4. Nếu Admin trả lời -> Bắn thông báo cho User
-        await manager.send_personal_message(json.dumps({"event": "new_support_msg"}), msg.user_id)
-        await manager.broadcast(json.dumps({"event": "new_support_msg"}))
+            
+    # ==========================================
+    # [ĐÃ SỬA] CHỐT CHẶN BÁO CÁO REAL-TIME TOÀN HỆ THỐNG
+    # Bất kể là User, Admin hay Bot vừa nói, thì đều phải báo cho cả 2 bên cập nhật màn hình!
+    # ==========================================
+    
+    # Ép màn hình Khách hàng tải lại tin nhắn mới
+    await manager.send_personal_message(json.dumps({"event": "new_support_msg"}), msg.user_id)
+    
+    # Ép màn hình Admin tải lại khung chat
+    await manager.broadcast(json.dumps({"event": "new_support_msg"}))
     
     return {"message": "Sent"}
 
