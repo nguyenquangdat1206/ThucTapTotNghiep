@@ -70,6 +70,15 @@ export default function AdminDashboard({ userInfo }) {
     const ws = new WebSocket(`wss://datquang-backend.onrender.com/ws/${userInfo.user_id}/${userInfo.role}`);
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
+
+      // ==========================================
+      // [MỚI] BẬT RADAR REAL-TIME CHO ADMIN
+      // ==========================================
+      if (data.event === 'status_changed') {
+         console.log("⚡ [Real-time] Hệ thống có biến động! Đang tải lại dữ liệu...");
+         fetchData(); 
+      }
+
       if (data.event === 'bad_review_alert') {
          alert(`🚨 CẢNH BÁO NGHIÊM TRỌNG:\n\nTài xế #${data.driver_id} vừa bị khách hàng đánh giá 1 SAO ở đơn hàng #${data.order_id}!\n\n💬 Lời nhắn của khách: "${data.feedback}"\n\n👉 Admin hãy chuyển sang tab "NGƯỜI DÙNG", kiểm tra và Khóa tài khoản tài xế này ngay lập tức!`);
       }
