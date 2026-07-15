@@ -62,7 +62,7 @@ export default function OrderDetail() {
     };
     initData();
 
-    const ws = new WebSocket(`wss://datquang.onrender.com/ws/${userInfo.user_id}/${userInfo.role}`);
+    const ws = new WebSocket(`wss://datquang-backend.onrender.com/ws/${userInfo.user_id}/${userInfo.role}`);
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
       if (data.event === 'new_chat_message' && data.order_id === parseInt(id)) fetchMessages();

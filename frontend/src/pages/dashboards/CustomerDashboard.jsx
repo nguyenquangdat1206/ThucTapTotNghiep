@@ -30,7 +30,7 @@ export default function CustomerDashboard({ userInfo }) {
     };
     loadData();
 
-    const ws = new WebSocket(`wss://datquang.onrender.com/ws/${userInfo.user_id}/${userInfo.role}`);
+    const ws = new WebSocket(`wss://datquang-backend.onrender.com/ws/${userInfo.user_id}/${userInfo.role}`);
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
       if (data.event === 'status_changed') fetchMyOrders();

@@ -67,7 +67,7 @@ export default function AdminDashboard({ userInfo }) {
     };
     init();
 
-    const ws = new WebSocket(`wss://datquang.onrender.com/ws/${userInfo.user_id}/${userInfo.role}`);
+    const ws = new WebSocket(`wss://datquang-backend.onrender.com/ws/${userInfo.user_id}/${userInfo.role}`);
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
       if (data.event === 'bad_review_alert') {
@@ -88,7 +88,7 @@ export default function AdminDashboard({ userInfo }) {
   useEffect(() => {
     let ws;
     if (selectedSupportUserId) {
-        ws = new WebSocket(`wss://datquang.onrender.com/ws/${userInfo.user_id}/${userInfo.role}`);
+        ws = new WebSocket(`wss://datquang-backend.onrender.com/ws/${userInfo.user_id}/${userInfo.role}`);
         ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
             if (data.event === 'new_support_msg') loadSupportChat(selectedSupportUserId);
