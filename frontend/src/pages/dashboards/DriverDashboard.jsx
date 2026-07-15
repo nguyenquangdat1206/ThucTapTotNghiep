@@ -37,9 +37,6 @@ export default function DriverDashboard({ userInfo }) {
     } catch (error) { console.error(error); }
   };
 
-  // ==========================================
-  // RADAR TÀI XẾ: CHỐNG TREO & TỰ ĐỘNG BÁO ĐƠN
-  // ==========================================
   useEffect(() => {
     const init = async () => {
       setLoading(true);
@@ -57,10 +54,10 @@ export default function DriverDashboard({ userInfo }) {
       ws = new WebSocket(`wss://datquang-backend.onrender.com/ws/${userInfo.user_id}/${userInfo.role}`);
 
       ws.onopen = () => {
-        console.log("🟢 [Radar Tài xế] Đã kết nối!");
+        console.log("🟢 [Radar Tài xế] Đã kết nối Bất tử!");
         pingInterval = setInterval(() => {
           if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "ping_keep_alive" }));
-        }, 30000);
+        }, 30000); // 30s bơm oxy 1 lần
       };
 
       ws.onmessage = (event) => {

@@ -22,9 +22,6 @@ export default function CustomerDashboard({ userInfo }) {
     } catch (error) { console.error(error); }
   };
 
-  // ==========================================
-  // WEBSOCKET: NHẬN THÔNG BÁO THEO THỜI GIAN THỰC
-  // ==========================================
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
@@ -41,10 +38,10 @@ export default function CustomerDashboard({ userInfo }) {
       ws = new WebSocket(`wss://datquang-backend.onrender.com/ws/${userInfo.user_id}/${userInfo.role}`);
 
       ws.onopen = () => {
-        console.log("🟢 [Real-time Customer] Đã kết nối!");
+        console.log("🟢 [Radar Khách Hàng] Đã kết nối Bất tử!");
         pingInterval = setInterval(() => {
           if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "ping_keep_alive" }));
-        }, 30000);
+        }, 30000); // 30s bơm oxy 1 lần
       };
 
       ws.onmessage = (event) => {
@@ -53,7 +50,7 @@ export default function CustomerDashboard({ userInfo }) {
       };
 
       ws.onclose = () => {
-        console.log("🔴 [Real-time Customer] Mất kết nối. Đang thử lại...");
+        console.log("🔴 [Radar Khách Hàng] Mất sóng. Đang thử lại...");
         clearInterval(pingInterval);
         reconnectTimeout = setTimeout(connectWebSocket, 3000);
       };
