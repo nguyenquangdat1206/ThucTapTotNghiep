@@ -1,44 +1,66 @@
+import os
+import json
+import asyncio
+from datetime import datetime, timedelta
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from datetime import datetime, timedelta
-import asyncio
+
 import models
 from database import engine, SessionLocal
-from core import manager, pwd_context  # [ĐÃ SỬA] Import thêm pwd_context để tạo mật khẩu
+from core import manager, pwd_context
+
+# Import đầy đủ các phòng ban (Bao gồm cả support)
 from routers import auth, orders, wallet, admin, support
-# Kéo các phòng ban (Routers) vào Main
-from routers import auth, orders, wallet, admin
 
 # Khởi tạo DB
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Logistics Core Backend", version="2.0")
 
-# Cấu hình tĩnh & CORS
-import os
+# ==========================================
+# 1. CẤU HÌNH CORS (CẤP GIẤY THÔNG HÀNH API)
+# ==========================================
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Cho phép tất cả các domain gọi tới
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ==========================================
+# 2. CẤU HÌNH THƯ MỤC LƯU TRỮ TĨNH (ẢNH)
+# ==========================================
 os.makedirs("static/avatars", exist_ok=True)
 os.makedirs("static/pods", exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
-# Đăng ký các phòng ban
+# ==========================================
+# 3. ĐĂNG KÝ CÁC PHÒNG BAN (ROUTERS)
+# ==========================================
 app.include_router(auth.router)
 app.include_router(orders.router)
 app.include_router(wallet.router)
 app.include_router(admin.router)
 app.include_router(support.router)
-# Điểm truy cập WebSocket
+
+# ==========================================
+# 4. WEBSOCKET (KẾT NỐI REAL-TIME)
+# ==========================================
 @app.websocket("/ws/{user_id}/{role}")
 async def websocket_endpoint(websocket: WebSocket, user_id: int, role: str):
     await manager.connect(user_id, role, websocket)
     try:
-        while True: await websocket.receive_text()
+        while True: 
+            await websocket.receive_text()
     except WebSocketDisconnect: 
         manager.disconnect(user_id)
 
+
 # =========================================================
-# [ĐÃ KHÔI PHỤC] HÀM TỰ ĐỘNG TẠO 4 TÀI KHOẢN MẪU KHI DB TRỐNG
+# 5. BACKGROUND TASKS & HÀM GIEO MẦM DATABASE
 # =========================================================
 def seed_database():
     db = SessionLocal()
@@ -70,9 +92,7 @@ def seed_database():
     finally:
         db.close()
 
-# Background Task dọn rác đơn hàng quá hạn
 async def auto_cancel_expired_orders():
-    import json
     while True:
         await asyncio.sleep(60)
         db = SessionLocal()
@@ -85,10 +105,12 @@ async def auto_cancel_expired_orders():
                     db.add(models.OrderStatusHistory(order_id=order.id, status="cancelled_timeout", changed_by=order.customer_id, note="Hệ thống tự hủy"))
                 db.commit()
                 await manager.broadcast(json.dumps({"event": "status_changed"}))
-        except Exception: pass
-        finally: db.close()
+        except Exception: 
+            pass
+        finally: 
+            db.close()
 
 @app.on_event("startup")
 async def startup_event(): 
-    seed_database() # <-- Gọi lại hàm gieo mầm ở đây!
+    seed_database() 
     asyncio.create_task(auto_cancel_expired_orders())

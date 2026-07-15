@@ -4,17 +4,18 @@ uvicorn[standard]>=0.23.0
 
 # Database & ORM
 SQLAlchemy>=2.0.0
-psycopg2-binary>=2.9.0  # Dành cho PostgreSQL
-pymysql>=1.1.0          # Dành cho MySQL 
+psycopg2-binary>=2.9.0
+pymysql>=1.1.0
 
 # Data Validation & Settings
 pydantic>=2.0.0
 pydantic-settings>=2.0.0
+email-validator>=2.1.0  # <--- THÊM DÒNG NÀY VÀO ĐÂY
 
 # Real-time Communication
 websockets>=11.0
 
-# Authentication & Security (Dành cho xử lý Token, Login)
+# Authentication & Security
 python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4
 python-multipart>=0.0.6

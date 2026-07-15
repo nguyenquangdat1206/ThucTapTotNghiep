@@ -7,6 +7,20 @@ import axios from 'axios';
 import AddressSearchInput from '../components/AddressSearchInput';
 import BookingMap from '../components/BookingMap';
 
+// =========================================================
+// [MỚI] DANH SÁCH TỌA ĐỘ 8 BẾN CẢNG TP.HCM (DÀNH CHO CONTAINER)
+// =========================================================
+const PORT_LIST = [
+  { name: "Cảng Cát Lái", lat: 10.7661, lng: 106.7820 },
+  { name: "Cảng Tân Cảng Phú Hữu", lat: 10.7895, lng: 106.8138 },
+  { name: "Cảng Tân Cảng Hiệp Phước", lat: 10.6272, lng: 106.7594 },
+  { name: "Cảng Container Quốc tế Việt Nam (VICT)", lat: 10.7437, lng: 106.7322 },
+  { name: "Cảng Tân Thuận", lat: 10.7578, lng: 106.7419 },
+  { name: "Cảng Bến Nghé", lat: 10.7538, lng: 106.7383 },
+  { name: "Cảng Saigon Premier Container Terminal (SPCT)", lat: 10.6214, lng: 106.7567 },
+  { name: "Cảng Container Quốc tế SP-ITC", lat: 10.7905, lng: 106.8202 }
+];
+
 export default function Booking() {
   const [promoCodeInput, setPromoCodeInput] = useState('');
   const [appliedPromo, setAppliedPromo] = useState(null);
@@ -49,7 +63,14 @@ export default function Booking() {
     }
   }, []);
 
-  useEffect(() => { if (serviceType === 'container') setIsBulky(false); }, [serviceType]);
+  // [ĐÃ SỬA] Reset lại Điểm giao hàng và phụ phí nếu Khách đổi sang chế độ Container
+  useEffect(() => { 
+    if (serviceType === 'container') {
+      setIsBulky(false);
+      setDropoffAddress(''); // Xóa text cũ
+      setDropoffCoords(null); // Xóa GPS cũ để bắt buộc chọn Cảng
+    } 
+  }, [serviceType]);
 
   useEffect(() => {
     if (distance > 0) {
@@ -200,6 +221,13 @@ export default function Booking() {
             <Alert variant="warning" className="fw-bold py-2">⚠️ Gợi ý: Bạn đã nhập chữ, nhưng quên click chọn địa chỉ trong danh sách!</Alert>
           )}
 
+          {/* [MỚI] HIỆN CẢNH BÁO CHO CONTAINER */}
+          {serviceType === 'container' && (
+             <Alert variant="info" className="fw-bold shadow-sm border-info border-2">
+               🚢 CHẾ ĐỘ CONTAINER: Điểm giao hàng (trả hàng) bắt buộc phải nằm trong các Bến cảng được cấp phép tại TP.HCM.
+             </Alert>
+          )}
+
           <Row>
             <Col lg={4} className="mb-4">
               <div className="p-3 bg-light rounded border h-100" style={{ maxHeight: '750px', overflowY: 'auto' }}>
@@ -210,7 +238,7 @@ export default function Booking() {
                 </Form.Select>
                 <hr />
 
-                {/* GỌI COMPONENT ADDRESS SEARCH VÀO ĐÂY */}
+                {/* ĐIỂM LẤY HÀNG: Luôn được nhập tự do */}
                 <AddressSearchInput 
                   label="📍 Điểm lấy hàng" placeholder="Nhập địa chỉ..." 
                   value={pickupAddress} onChange={(val) => { setPickupAddress(val); setPickupCoords(null); }} 
@@ -218,11 +246,37 @@ export default function Booking() {
                   badgeColor="secondary" userLocation={userLocation} 
                 />
                 
-                <AddressSearchInput 
-                  label="🚩 Điểm giao hàng" placeholder="Nhập địa chỉ..." 
-                  value={dropoffAddress} onChange={(val) => { setDropoffAddress(val); setDropoffCoords(null); }} 
-                  onSelectLocation={setDropoffCoords} badgeColor="danger" userLocation={userLocation} 
-                />
+                {/* [MỚI] ĐIỂM GIAO HÀNG: Thay đổi giao diện dựa trên Loại xe */}
+                {serviceType === 'container' ? (
+                  <Form.Group className="mb-3 position-relative">
+                    <Form.Label className="fw-bold text-danger">🚩 Điểm giao hàng (Bến cảng)</Form.Label>
+                    <Form.Select 
+                      className="border-danger fw-bold text-primary shadow-sm"
+                      value={dropoffAddress}
+                      onChange={(e) => {
+                        const selectedPort = PORT_LIST.find(p => p.name === e.target.value);
+                        if (selectedPort) {
+                          setDropoffAddress(selectedPort.name);
+                          setDropoffCoords({ lat: selectedPort.lat, lng: selectedPort.lng });
+                        } else {
+                          setDropoffAddress('');
+                          setDropoffCoords(null);
+                        }
+                      }}
+                    >
+                      <option value="">-- Vui lòng chọn Bến cảng --</option>
+                      {PORT_LIST.map((port, index) => (
+                         <option key={index} value={port.name}>🚢 {port.name}</option>
+                      ))}
+                    </Form.Select>
+                  </Form.Group>
+                ) : (
+                  <AddressSearchInput 
+                    label="🚩 Điểm giao hàng" placeholder="Nhập địa chỉ..." 
+                    value={dropoffAddress} onChange={(val) => { setDropoffAddress(val); setDropoffCoords(null); }} 
+                    onSelectLocation={setDropoffCoords} badgeColor="danger" userLocation={userLocation} 
+                  />
+                )}
 
                 <hr />
                 
