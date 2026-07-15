@@ -78,19 +78,22 @@ async def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)
             if dist <= 3.0: 
                 nearby_drivers.append(uid)
 
-    # Ưu tiên tài xế ở gần (dưới 3km), nếu không có ai thì random toàn hệ thống
+    # Ưu tiên tài xế ở gần (dưới 3km), nếu không có ai thì lấy toàn hệ thống
     dispatch_pool = nearby_drivers if nearby_drivers else online_drivers
 
     if batch_formed and assigned_driver_id:
         payload = {"event": "urgent_order_alert", "order": {"id": new_order.id, "pickup": pickup_addr.address_text if pickup_addr else "Chưa rõ", "dropoff": dropoff_addr.address_text if dropoff_addr else "Chưa rõ", "price": new_order.driver_payout / 0.8, "details": (new_order.package_details or "") + " [HỆ THỐNG VỪA ÉP THÊM ĐƠN!]"}}
-        if assigned_driver_id in manager.active_connections: await manager.send_personal_message(json.dumps(payload), assigned_driver_id)
-        await manager.broadcast(json.dumps({"event": "status_changed"}))
+        if assigned_driver_id in manager.active_connections: 
+            await manager.send_personal_message(json.dumps(payload), assigned_driver_id)
+            
     elif dispatch_pool:
-        lucky_id = random.choice(dispatch_pool)
+        # [ĐÃ SỬA] Bắn Popup cho TẤT CẢ tài xế online gần đó thay vì chỉ 1 người random
         payload = {"event": "urgent_order_alert", "order": {"id": new_order.id, "pickup": pickup_addr.address_text if pickup_addr else "Chưa rõ", "dropoff": dropoff_addr.address_text if dropoff_addr else "Chưa rõ", "price": (new_order.driver_payout + (p_order_payout if batch_formed else 0)) / 0.8, "details": (new_order.package_details or "") + (" [GHÉP 2 ĐƠN!]" if batch_formed else "")}}
-        await manager.send_personal_message(json.dumps(payload), lucky_id)
+        for uid in dispatch_pool:
+            await manager.send_personal_message(json.dumps(payload), uid)
         
-    if not (batch_formed and assigned_driver_id): await manager.broadcast(json.dumps({"event": "new_order"}))
+    # [ĐÃ SỬA] Luôn phát sóng "status_changed" để Admin và mọi người tải lại bảng dữ liệu mới
+    await manager.broadcast(json.dumps({"event": "status_changed"}))
     return {"message": "Tạo đơn thành công!", "is_batched": batch_formed}
 
 @router.get("/orders/pending")
@@ -126,7 +129,8 @@ async def accept_order(order_id: int, driver_id: int, db: Session = Depends(get_
     for o in batch_orders:
         o.driver_id = driver_id; o.current_status = "accepted"
         db.add(models.OrderStatusHistory(order_id=o.id, status="accepted", changed_by=driver_id))
-    db.commit(); await manager.broadcast(json.dumps({"event": "status_changed"}))
+    db.commit()
+    await manager.broadcast(json.dumps({"event": "status_changed"}))
     return {"message": "Nhận cuốc thành công!"}
 
 # ==========================================================
@@ -145,7 +149,8 @@ async def pickup_order_with_pod(order_id: int, file: UploadFile = File(...), db:
     
     order.current_status = "picking_up"
     db.add(models.OrderStatusHistory(order_id=order.id, status="picking_up", changed_by=order.driver_id, note="Có ảnh lấy hàng"))
-    db.commit(); await manager.broadcast(json.dumps({"event": "status_changed"}))
+    db.commit()
+    await manager.broadcast(json.dumps({"event": "status_changed"}))
     return {"message": "Thành công"}
 
 @router.post("/orders/{order_id}/complete_with_pod")
@@ -163,7 +168,9 @@ async def complete_order_with_pod(order_id: int, file: UploadFile = File(...), d
         else: driver.balance -= commission; db.add(models.Payment(user_id=driver.id, order_id=order.id, amount=commission, type="deduction", method="wallet", status="success"))
         order.current_status = "completed"
         db.add(models.OrderStatusHistory(order_id=order.id, status="completed", changed_by=driver.id))
-    db.commit(); await manager.broadcast(json.dumps({"event": "status_changed"})); await manager.broadcast(json.dumps({"event": "balance_changed"}))
+    db.commit()
+    await manager.broadcast(json.dumps({"event": "status_changed"}))
+    await manager.broadcast(json.dumps({"event": "balance_changed"}))
     return {"message": "Thành công"}
 
 @router.put("/orders/{order_id}/status")
@@ -171,7 +178,8 @@ async def update_order_status(order_id: int, status: str, db: Session = Depends(
     order = db.query(models.Order).filter(models.Order.id == order_id).first()
     order.current_status = status
     db.add(models.OrderStatusHistory(order_id=order.id, status=status, changed_by=current_user["user_id"]))
-    db.commit(); await manager.broadcast(json.dumps({"event": "status_changed"}))
+    db.commit()
+    await manager.broadcast(json.dumps({"event": "status_changed"}))
     return {"message": "Thành công!"}
 
 @router.put("/orders/{order_id}/driver_cancel")
@@ -179,7 +187,8 @@ async def driver_cancel_order(order_id: int, db: Session = Depends(get_db), curr
     order = db.query(models.Order).filter(models.Order.id == order_id).first()
     order.driver_id = None; order.current_status = "pending"
     db.add(models.OrderStatusHistory(order_id=order.id, status="driver_cancelled", changed_by=current_user["user_id"], note="Nhả cuốc"))
-    db.commit(); await manager.broadcast(json.dumps({"event": "status_changed"}))
+    db.commit()
+    await manager.broadcast(json.dumps({"event": "status_changed"}))
     return {"message": "Thành công!"}
 
 @router.get("/users/{user_id}/orders/customer")
