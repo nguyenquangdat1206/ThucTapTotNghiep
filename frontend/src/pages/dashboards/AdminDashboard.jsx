@@ -34,6 +34,12 @@ export default function AdminDashboard({ userInfo }) {
   const [supportInput, setSupportInput] = useState('');
   const supportEndRef = useRef(null);
 
+  // Dùng useRef để giữ ID người dùng đang chat, giúp WebSocket không bị re-render liên tục
+  const selectedUserRef = useRef(selectedSupportUserId);
+  useEffect(() => {
+    selectedUserRef.current = selectedSupportUserId;
+  }, [selectedSupportUserId]);
+
   const fetchData = async () => {
     try {
       const resOrders = await axios.get('https://datquang-backend.onrender.com/admin/orders');
@@ -59,6 +65,9 @@ export default function AdminDashboard({ userInfo }) {
     } catch(e) {}
   };
 
+  // =======================================================
+  // 🚀 WEBSOCKET BẤT TỬ (AUTO RECONNECT + PING/PONG)
+  // =======================================================
   useEffect(() => {
     const init = async () => {
       setLoading(true);
@@ -67,44 +76,65 @@ export default function AdminDashboard({ userInfo }) {
     };
     init();
 
-    const ws = new WebSocket(`wss://datquang-backend.onrender.com/ws/${userInfo.user_id}/${userInfo.role}`);
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
+    let ws;
+    let pingInterval;
+    let reconnectTimeout;
 
-      // ==========================================
-      // [MỚI] BẬT RADAR REAL-TIME CHO ADMIN
-      // ==========================================
-      if (data.event === 'status_changed') {
-         console.log("⚡ [Real-time] Hệ thống có biến động! Đang tải lại dữ liệu...");
-         fetchData(); 
-      }
+    const connectWebSocket = () => {
+      ws = new WebSocket(`wss://datquang-backend.onrender.com/ws/${userInfo.user_id}/${userInfo.role}`);
 
-      if (data.event === 'bad_review_alert') {
-         alert(`🚨 CẢNH BÁO NGHIÊM TRỌNG:\n\nTài xế #${data.driver_id} vừa bị khách hàng đánh giá 1 SAO ở đơn hàng #${data.order_id}!\n\n💬 Lời nhắn của khách: "${data.feedback}"\n\n👉 Admin hãy chuyển sang tab "NGƯỜI DÙNG", kiểm tra và Khóa tài khoản tài xế này ngay lập tức!`);
-      }
-      if (data.event === 'admin_support_alert') {
-          alert(`🎧 CSKH: Người dùng #${data.user_id} đang cần hỗ trợ từ Admin!`);
-          fetchData();
-      }
-      if (data.event === 'new_support_msg') {
-          fetchData(); 
+      ws.onopen = () => {
+        console.log("🟢 [Real-time Admin] Đã kết nối thành công!");
+        // Gửi Ping mỗi 30s để giữ kết nối không bị Render đánh sập
+        pingInterval = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: "ping_keep_alive" }));
+          }
+        }, 30000);
+      };
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        
+        if (data.event === 'status_changed') {
+           console.log("⚡ [Real-time] Cập nhật đơn hàng mới!");
+           fetchData(); 
+        }
+
+        if (data.event === 'bad_review_alert') {
+           alert(`🚨 CẢNH BÁO NGHIÊM TRỌNG:\n\nTài xế #${data.driver_id} vừa bị khách hàng đánh giá 1 SAO ở đơn hàng #${data.order_id}!\n\n💬 Lời nhắn của khách: "${data.feedback}"`);
+        }
+        if (data.event === 'admin_support_alert') {
+            alert(`🎧 CSKH: Người dùng #${data.user_id} đang cần hỗ trợ từ Admin!`);
+            fetchData();
+        }
+        if (data.event === 'new_support_msg') {
+            fetchData(); 
+            if (selectedUserRef.current) {
+              loadSupportChat(selectedUserRef.current);
+            }
+        }
+      };
+
+      ws.onclose = () => {
+        console.log("🔴 [Real-time Admin] Mất kết nối. Đang tự động kết nối lại...");
+        clearInterval(pingInterval);
+        // Tự động thử kết nối lại sau 3 giây
+        reconnectTimeout = setTimeout(connectWebSocket, 3000);
+      };
+    };
+
+    connectWebSocket();
+
+    return () => {
+      clearInterval(pingInterval);
+      clearTimeout(reconnectTimeout);
+      if (ws) {
+        ws.onclose = null; // Ngắt chế độ tự kết nối lại nếu Admin đăng xuất
+        ws.close();
       }
     };
-    return () => ws.close();
   }, [userInfo.user_id, userInfo.role]);
-
-  // Cập nhật lại khung chat nếu có tin nhắn CSKH mới
-  useEffect(() => {
-    let ws;
-    if (selectedSupportUserId) {
-        ws = new WebSocket(`wss://datquang-backend.onrender.com/ws/${userInfo.user_id}/${userInfo.role}`);
-        ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            if (data.event === 'new_support_msg') loadSupportChat(selectedSupportUserId);
-        };
-    }
-    return () => { if(ws) ws.close(); }
-  }, [selectedSupportUserId, userInfo]);
 
   useEffect(() => { supportEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [supportMessages]);
 
