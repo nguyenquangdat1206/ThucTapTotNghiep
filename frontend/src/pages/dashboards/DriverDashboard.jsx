@@ -37,6 +37,9 @@ export default function DriverDashboard({ userInfo }) {
     } catch (error) { console.error(error); }
   };
 
+  // ==========================================
+  // RADAR TÀI XẾ: CHỐNG TREO & TỰ ĐỘNG BÁO ĐƠN
+  // ==========================================
   useEffect(() => {
     const init = async () => {
       setLoading(true);
@@ -46,23 +49,53 @@ export default function DriverDashboard({ userInfo }) {
     };
     init();
 
-    const ws = new WebSocket(`wss://datquang-backend.onrender.com/ws/${userInfo.user_id}/${userInfo.role}`);
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.event === 'user_banned') { localStorage.removeItem('userInfo'); navigate('/'); return; }
-      if (data.event === 'urgent_order_alert') {
-        setUrgentOrder(data.order); 
-        setShowUrgentPopup(true);
-        const audio = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
-        audio.loop = true; 
-        audio.play().catch(e=>e);
-        setAudioInstance(audio); 
-        return;
-      }
-      fetchData(); // Bất kỳ sự kiện nào khác thì load lại data
+    let ws;
+    let pingInterval;
+    let reconnectTimeout;
+
+    const connectWebSocket = () => {
+      ws = new WebSocket(`wss://datquang-backend.onrender.com/ws/${userInfo.user_id}/${userInfo.role}`);
+
+      ws.onopen = () => {
+        console.log("🟢 [Radar Tài xế] Đã kết nối!");
+        pingInterval = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "ping_keep_alive" }));
+        }, 30000);
+      };
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.event === 'user_banned') { localStorage.removeItem('userInfo'); navigate('/'); return; }
+        if (data.event === 'urgent_order_alert') {
+          setUrgentOrder(data.order); 
+          setShowUrgentPopup(true);
+          const audio = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+          audio.loop = true; 
+          audio.play().catch(e=>e);
+          setAudioInstance(audio); 
+          return;
+        }
+        fetchData(); 
+      };
+
+      ws.onclose = () => {
+        console.log("🔴 [Radar Tài xế] Mất sóng. Đang dò tìm lại...");
+        clearInterval(pingInterval);
+        reconnectTimeout = setTimeout(connectWebSocket, 3000);
+      };
     };
-    return () => ws.close();
-  }, [userInfo.user_id, userInfo.role]);
+
+    connectWebSocket();
+
+    return () => {
+      clearInterval(pingInterval);
+      clearTimeout(reconnectTimeout);
+      if (ws) {
+        ws.onclose = null;
+        ws.close();
+      }
+    };
+  }, [userInfo.user_id, userInfo.role, isReady]);
 
   const handleToggleReady = async () => {
     const newState = !isReady;

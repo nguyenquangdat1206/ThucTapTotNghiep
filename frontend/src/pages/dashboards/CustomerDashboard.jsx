@@ -22,6 +22,9 @@ export default function CustomerDashboard({ userInfo }) {
     } catch (error) { console.error(error); }
   };
 
+  // ==========================================
+  // WEBSOCKET: NHẬN THÔNG BÁO THEO THỜI GIAN THỰC
+  // ==========================================
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
@@ -30,12 +33,42 @@ export default function CustomerDashboard({ userInfo }) {
     };
     loadData();
 
-    const ws = new WebSocket(`wss://datquang-backend.onrender.com/ws/${userInfo.user_id}/${userInfo.role}`);
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.event === 'status_changed') fetchMyOrders();
+    let ws;
+    let pingInterval;
+    let reconnectTimeout;
+
+    const connectWebSocket = () => {
+      ws = new WebSocket(`wss://datquang-backend.onrender.com/ws/${userInfo.user_id}/${userInfo.role}`);
+
+      ws.onopen = () => {
+        console.log("🟢 [Real-time Customer] Đã kết nối!");
+        pingInterval = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "ping_keep_alive" }));
+        }, 30000);
+      };
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.event === 'status_changed') fetchMyOrders();
+      };
+
+      ws.onclose = () => {
+        console.log("🔴 [Real-time Customer] Mất kết nối. Đang thử lại...");
+        clearInterval(pingInterval);
+        reconnectTimeout = setTimeout(connectWebSocket, 3000);
+      };
     };
-    return () => ws.close();
+
+    connectWebSocket();
+
+    return () => {
+      clearInterval(pingInterval);
+      clearTimeout(reconnectTimeout);
+      if (ws) {
+        ws.onclose = null;
+        ws.close();
+      }
+    };
   }, [userInfo.user_id, userInfo.role]);
 
   const handleUpdateProfile = async (e) => {
