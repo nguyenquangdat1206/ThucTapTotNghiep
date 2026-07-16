@@ -153,19 +153,69 @@ async def complete_order_with_pod(order_id: int, file: UploadFile = File(...), d
     file_location = f"static/pods/dropoff_{order_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.{file_ext}"
     with open(file_location, "wb+") as f: shutil.copyfileobj(file.file, f)
     order.proof_image_url = f"https://datquang-backend.onrender.com/{file_location}"
+    
     if order.current_status != "completed":
         driver = db.query(models.User).filter(models.User.id == order.driver_id).first()
-        payout = order.driver_payout or (order.final_price * 0.8); commission = order.final_price - payout
-        if order.payment_method == "bank": driver.balance += payout; db.add(models.Payment(user_id=driver.id, order_id=order.id, amount=payout, type="income", method="wallet", status="success"))
-        else: driver.balance -= commission; db.add(models.Payment(user_id=driver.id, order_id=order.id, amount=commission, type="deduction", method="wallet", status="success"))
+        payout = order.driver_payout or (order.final_price * 0.8)
+        commission = order.final_price - payout
+        
+        if order.payment_method == "bank": 
+            driver.balance += payout
+            db.add(models.Payment(user_id=driver.id, order_id=order.id, amount=payout, type="income", method="wallet", status="success"))
+        else: 
+            driver.balance -= commission
+            db.add(models.Payment(user_id=driver.id, order_id=order.id, amount=commission, type="deduction", method="wallet", status="success"))
+            
         order.current_status = "completed"
         db.add(models.OrderStatusHistory(order_id=order.id, status="completed", changed_by=driver.id))
+        
+        # =========================================================
+        # [MỚI] HỆ THỐNG TỰ ĐỘNG CHAT CẢM ƠN KHÁCH HÀNG
+        # =========================================================
+        auto_msg = models.Message(
+            order_id=order.id, 
+            sender_id=driver.id, # Mượn ID tài xế để gửi tin nhắn
+            content="🎉 HỆ THỐNG: Chuyến đi đã hoàn tất thành công! Cảm ơn bạn đã tin tưởng sử dụng dịch vụ của Đạt Quang Logistics. Chúc bạn một ngày tốt lành và đừng quên để lại đánh giá nhé! ⭐"
+        )
+        db.add(auto_msg)
+        
     db.commit()
+    
     try: 
         await manager.broadcast(json.dumps({"event": "status_changed"}))
         await manager.broadcast(json.dumps({"event": "balance_changed"}))
+        # Kích hoạt cho khung chat nảy thông báo mới
+        await manager.broadcast(json.dumps({"event": "new_chat_message", "order_id": order_id}))
     except: pass
+    
     return {"message": "Thành công"}
+
+@router.put("/orders/{order_id}/status")
+async def update_order_status(order_id: int, status: str, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    
+    # =========================================================
+    # [MỚI] TRƯỜNG HỢP ADMIN ÉP HOÀN THÀNH ĐƠN
+    # =========================================================
+    if status == "completed" and order.current_status != "completed":
+        auto_msg = models.Message(
+            order_id=order.id, 
+            sender_id=current_user["user_id"],
+            content="🎉 HỆ THỐNG: Chuyến đi đã hoàn tất thành công! Cảm ơn bạn đã tin tưởng sử dụng dịch vụ của Đạt Quang Logistics. Chúc bạn một ngày tốt lành! ⭐"
+        )
+        db.add(auto_msg)
+        
+    order.current_status = status
+    db.add(models.OrderStatusHistory(order_id=order.id, status=status, changed_by=current_user["user_id"]))
+    db.commit()
+    
+    try: 
+        await manager.broadcast(json.dumps({"event": "status_changed"}))
+        if status == "completed":
+            await manager.broadcast(json.dumps({"event": "new_chat_message", "order_id": order_id}))
+    except: pass
+    
+    return {"message": "Thành công!"}
 
 @router.put("/orders/{order_id}/status")
 async def update_order_status(order_id: int, status: str, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
@@ -180,11 +230,33 @@ async def update_order_status(order_id: int, status: str, db: Session = Depends(
 @router.put("/orders/{order_id}/driver_cancel")
 async def driver_cancel_order(order_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     order = db.query(models.Order).filter(models.Order.id == order_id).first()
-    order.driver_id = None; order.current_status = "pending"
+    
+    # 1. Gỡ tài xế ra khỏi đơn và đưa về trạng thái tìm kiếm
+    order.driver_id = None
+    order.current_status = "pending"
     db.add(models.OrderStatusHistory(order_id=order.id, status="driver_cancelled", changed_by=current_user["user_id"], note="Nhả cuốc"))
+    
+    # =========================================================
+    # [MỚI] 2. HỆ THỐNG TỰ ĐỘNG CHAT XIN LỖI KHÁCH HÀNG
+    # =========================================================
+    auto_msg = models.Message(
+        order_id=order.id, 
+        sender_id=current_user["user_id"], # Mượn ID tài xế để gửi tin nhắn
+        content="🔴 HỆ THỐNG: Tài xế không đến được do sự cố đột xuất. Chúng tôi đã chuyển đơn về lại hệ thống để ưu tiên tìm tài xế khác cho bạn. Rất mong bạn thông cảm!"
+    )
+    db.add(auto_msg)
+    
     db.commit()
-    try: await manager.broadcast(json.dumps({"event": "status_changed"}))
-    except: pass
+    
+    # 3. Kích loa thông báo cho toàn máy chủ
+    try: 
+        # Báo tải lại trạng thái đơn (Từ Đang đến -> Đang tìm)
+        await manager.broadcast(json.dumps({"event": "status_changed"}))
+        # Ép khung chat của Khách hàng hiện ngay tin nhắn xin lỗi
+        await manager.broadcast(json.dumps({"event": "new_chat_message", "order_id": order_id}))
+    except: 
+        pass
+        
     return {"message": "Thành công!"}
 
 @router.get("/users/{user_id}/orders/customer")
