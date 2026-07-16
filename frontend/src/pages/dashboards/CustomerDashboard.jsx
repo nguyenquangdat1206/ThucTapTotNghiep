@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Card, Button, Table, Badge, Modal, Form, Alert, Row, Col } from 'react-bootstrap';
+import { Container, Card, Button, Table, Badge, Modal, Form, Alert } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import DashboardSkeleton from '../../components/DashboardSkeleton';
@@ -17,56 +17,38 @@ export default function CustomerDashboard({ userInfo }) {
 
   const fetchMyOrders = async () => {
     try {
-      const response = await axios.get(`https://datquang-backend.onrender.com/users/${userInfo.user_id}/orders/customer`);
+      // BÙA CHỐNG CACHE TRÌNH DUYỆT
+      const t = new Date().getTime();
+      const response = await axios.get(`https://datquang-backend.onrender.com/users/${userInfo.user_id}/orders/customer?t=${t}`);
       setMyOrders(response.data);
     } catch (error) { console.error(error); }
   };
 
   useEffect(() => {
     const loadData = async () => {
-      setLoading(true);
-      await fetchMyOrders();
-      setTimeout(() => setLoading(false), 500);
+      setLoading(true); await fetchMyOrders(); setTimeout(() => setLoading(false), 500);
     };
     loadData();
 
     let ws;
-    let pingInterval;
-    let reconnectTimeout;
-
     const connectWebSocket = () => {
       ws = new WebSocket(`wss://datquang-backend.onrender.com/ws/${userInfo.user_id}/${userInfo.role}`);
-
-      ws.onopen = () => {
-        console.log("🟢 [Radar Khách Hàng] Đã kết nối Bất tử!");
-        pingInterval = setInterval(() => {
-          if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "ping_keep_alive" }));
-        }, 30000); // 30s bơm oxy 1 lần
-      };
-
+      ws.onopen = () => console.log("🟢 [Radar Khách] Đã kết nối Bất tử!");
       ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
         if (data.event === 'status_changed') fetchMyOrders();
       };
-
-      ws.onclose = () => {
-        console.log("🔴 [Radar Khách Hàng] Mất sóng. Đang thử lại...");
-        clearInterval(pingInterval);
-        reconnectTimeout = setTimeout(connectWebSocket, 3000);
-      };
+      ws.onclose = () => { setTimeout(connectWebSocket, 3000); };
     };
-
     connectWebSocket();
-
-    return () => {
-      clearInterval(pingInterval);
-      clearTimeout(reconnectTimeout);
-      if (ws) {
-        ws.onclose = null;
-        ws.close();
-      }
-    };
+    return () => { if (ws) { ws.onclose = null; ws.close(); } };
   }, [userInfo.user_id, userInfo.role]);
+
+  // BÙA AUTO-POLLING LÀM MỚI LIÊN TỤC
+  useEffect(() => {
+    const interval = setInterval(() => fetchMyOrders(), 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
@@ -74,15 +56,12 @@ export default function CustomerDashboard({ userInfo }) {
       let updatedUser = { ...userInfo };
       const resProfile = await axios.put(`https://datquang-backend.onrender.com/users/${userInfo.user_id}/profile`, profileForm);
       updatedUser = { ...updatedUser, ...resProfile.data };
-
       if (avatarFile) {
-        const formData = new FormData();
-        formData.append("file", avatarFile);
+        const formData = new FormData(); formData.append("file", avatarFile);
         const resAvatar = await axios.post(`https://datquang-backend.onrender.com/users/${userInfo.user_id}/avatar`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
         updatedUser.avatar_url = resAvatar.data.avatar_url;
       }
-      localStorage.setItem('userInfo', JSON.stringify(updatedUser));
-      window.location.reload(); 
+      localStorage.setItem('userInfo', JSON.stringify(updatedUser)); window.location.reload(); 
     } catch (error) { setActionMessage("❌ Lỗi cập nhật hồ sơ!"); }
   };
 

@@ -28,11 +28,13 @@ export default function DriverDashboard({ userInfo }) {
 
   const fetchData = async () => {
     try {
-      const resBalance = await axios.get(`https://datquang-backend.onrender.com/users/${userInfo.user_id}`);
+      // BÙA CHỐNG CACHE: Bắt trình duyệt luôn lấy dữ liệu mới
+      const t = new Date().getTime();
+      const resBalance = await axios.get(`https://datquang-backend.onrender.com/users/${userInfo.user_id}?t=${t}`);
       setUserBalance(resBalance.data.balance);
-      const resPending = await axios.get('https://datquang-backend.onrender.com/orders/pending');
+      const resPending = await axios.get(`https://datquang-backend.onrender.com/orders/pending?t=${t}`);
       setPendingOrders(resPending.data);
-      const resMy = await axios.get(`https://datquang-backend.onrender.com/users/${userInfo.user_id}/orders/driver`);
+      const resMy = await axios.get(`https://datquang-backend.onrender.com/users/${userInfo.user_id}/orders/driver?t=${t}`);
       setMyOrders(resMy.data.order_history); 
     } catch (error) { console.error(error); }
   };
@@ -47,70 +49,54 @@ export default function DriverDashboard({ userInfo }) {
     init();
 
     let ws;
-    let pingInterval;
-    let reconnectTimeout;
-
     const connectWebSocket = () => {
       ws = new WebSocket(`wss://datquang-backend.onrender.com/ws/${userInfo.user_id}/${userInfo.role}`);
-
-      ws.onopen = () => {
-        console.log("🟢 [Radar Tài xế] Đã kết nối Bất tử!");
-        pingInterval = setInterval(() => {
-          if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "ping_keep_alive" }));
-        }, 30000); // 30s bơm oxy 1 lần
-      };
-
+      ws.onopen = () => console.log("🟢 [Radar Tài xế] Đã kết nối Bất tử!");
       ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
         if (data.event === 'user_banned') { localStorage.removeItem('userInfo'); navigate('/'); return; }
         if (data.event === 'urgent_order_alert') {
-          setUrgentOrder(data.order); 
-          setShowUrgentPopup(true);
-          const audio = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
-          audio.loop = true; 
-          audio.play().catch(e=>e);
-          setAudioInstance(audio); 
-          return;
+          // Lọc đúng xe mới cho kêu
+          if (data.target_role === userInfo.role) {
+             setUrgentOrder(data.order); 
+             setShowUrgentPopup(true);
+             const audio = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+             audio.loop = true; audio.play().catch(e=>e); setAudioInstance(audio); 
+          }
         }
         fetchData(); 
       };
-
       ws.onclose = () => {
-        console.log("🔴 [Radar Tài xế] Mất sóng. Đang dò tìm lại...");
-        clearInterval(pingInterval);
-        reconnectTimeout = setTimeout(connectWebSocket, 3000);
+        console.log("🔴 [Radar Tài xế] Mất sóng. Thử lại sau 3s...");
+        setTimeout(connectWebSocket, 3000);
       };
     };
-
     connectWebSocket();
-
-    return () => {
-      clearInterval(pingInterval);
-      clearTimeout(reconnectTimeout);
-      if (ws) {
-        ws.onclose = null;
-        ws.close();
-      }
-    };
+    return () => { if (ws) { ws.onclose = null; ws.close(); } };
   }, [userInfo.user_id, userInfo.role, isReady]);
+
+  // ===============================================
+  // BÙA HỘ MỆNH AUTO-POLLING (5 Giây làm mới 1 lần)
+  // ===============================================
+  useEffect(() => {
+    if (!isReady) return;
+    const interval = setInterval(() => { fetchData(); }, 5000);
+    return () => clearInterval(interval);
+  }, [isReady]);
 
   const handleToggleReady = async () => {
     const newState = !isReady;
     try {
       await axios.put(`https://datquang-backend.onrender.com/driver/${userInfo.user_id}/toggle_ready?is_ready=${newState}`);
-      setIsReady(newState);
-      localStorage.setItem(`driver_ready_${userInfo.user_id}`, newState); 
-    } catch(e) { console.error(e); }
+      setIsReady(newState); localStorage.setItem(`driver_ready_${userInfo.user_id}`, newState); 
+    } catch(e) {}
   };
 
   const handleAcceptOrder = async (orderId) => {
     try {
       await axios.put(`https://datquang-backend.onrender.com/orders/${orderId}/accept?driver_id=${userInfo.user_id}`);
-      setActionMessage(`🎉 Nhận thành công đơn!`);
-    } catch (error) { 
-      const errorMsg = error.response?.data?.detail || "Lỗi mạng hoặc đơn đã bị nhận!";
-      setActionMessage(`❌ ${errorMsg}`);
-    }
+      setActionMessage(`🎉 Nhận thành công đơn!`); fetchData();
+    } catch (error) { setActionMessage(`❌ Lỗi hoặc đơn đã bị nhận!`); }
   };
 
   const handleUpdateProfile = async (e) => {
@@ -119,15 +105,12 @@ export default function DriverDashboard({ userInfo }) {
       let updatedUser = { ...userInfo };
       const resProfile = await axios.put(`https://datquang-backend.onrender.com/users/${userInfo.user_id}/profile`, profileForm);
       updatedUser = { ...updatedUser, ...resProfile.data };
-
       if (avatarFile) {
-        const formData = new FormData();
-        formData.append("file", avatarFile);
+        const formData = new FormData(); formData.append("file", avatarFile);
         const resAvatar = await axios.post(`https://datquang-backend.onrender.com/users/${userInfo.user_id}/avatar`, formData, { headers: { 'Content-Type': 'multipart/form-data' }});
         updatedUser.avatar_url = resAvatar.data.avatar_url;
       }
-      localStorage.setItem('userInfo', JSON.stringify(updatedUser));
-      window.location.reload(); 
+      localStorage.setItem('userInfo', JSON.stringify(updatedUser)); window.location.reload(); 
     } catch (error) { setActionMessage("❌ Lỗi cập nhật hồ sơ!"); }
   };
 
@@ -153,8 +136,7 @@ export default function DriverDashboard({ userInfo }) {
   const groupedPendingOrders = Object.values(pendingOrders.reduce((acc, order) => {
     if (order.batch_id) {
         if (!acc[order.batch_id]) acc[order.batch_id] = { ...order, is_batch: true, total_price: 0, ids: [] };
-        acc[order.batch_id].total_price += order.price;
-        acc[order.batch_id].ids.push(order.id);
+        acc[order.batch_id].total_price += order.price; acc[order.batch_id].ids.push(order.id);
     } else { acc[order.id] = { ...order, total_price: order.price, ids: [order.id] }; }
     return acc;
   }, {}));
@@ -188,16 +170,9 @@ export default function DriverDashboard({ userInfo }) {
                 <Badge bg={userInfo.role.startsWith('pending') ? "warning" : "info"} text="dark">
                   {userInfo.role === 'driver_express' ? 'TÀI XẾ XE MÁY' : 'TÀI XẾ CONTAINER'}
                 </Badge>
-                
-                <Button variant="success" size="sm" className="fw-bold px-3 rounded-pill shadow-sm" onClick={() => navigate('/wallet')}>
-                  💰 Ví: {userBalance.toLocaleString()} đ
-                </Button>
-                
+                <Button variant="success" size="sm" className="fw-bold px-3 rounded-pill shadow-sm" onClick={() => navigate('/wallet')}>💰 Ví: {userBalance.toLocaleString()} đ</Button>
                 <div className="bg-white rounded-pill px-3 py-1 shadow-sm border border-2 d-flex align-items-center" style={{borderColor: isReady ? '#198754' : '#dc3545'}}>
-                  <Form.Check 
-                    type="switch" id="driver-ready-switch" label={isReady ? "🟢 Đang nhận đơn" : "🔴 Đang nghỉ ngơi"}
-                    checked={isReady} onChange={handleToggleReady} className={`fw-bold mb-0 ${isReady ? 'text-success' : 'text-danger'}`}
-                  />
+                  <Form.Check type="switch" id="driver-ready-switch" label={isReady ? "🟢 Đang nhận đơn" : "🔴 Đang nghỉ ngơi"} checked={isReady} onChange={handleToggleReady} className={`fw-bold mb-0 ${isReady ? 'text-success' : 'text-danger'}`} />
                 </div>
               </div>
             </div>
@@ -255,7 +230,7 @@ export default function DriverDashboard({ userInfo }) {
                   <tr key={idx}>
                     <td>{order.is_batch ? <Badge bg="danger" className="fs-6">📦 CHUYẾN GHÉP ({order.ids.length} ĐƠN)</Badge> : <strong className="fs-6">Đơn #{order.id}</strong>}</td>
                     <td>{getStatusBadge(order.status)}</td>
-                    <td><Button variant="primary" size="sm" className="fw-bold shadow-sm" onClick={() => navigate(`/order/${order.ids[0]}`)}>🧭 Mở Lộ Trình Lấy / Giao</Button></td>
+                    <td><Button variant="primary" size="sm" className="fw-bold shadow-sm" onClick={() => navigate(`/order/${order.ids[0]}`)}>🧭 Mở Lộ Trình</Button></td>
                   </tr>
                 ))}
               </tbody>
@@ -284,6 +259,7 @@ export default function DriverDashboard({ userInfo }) {
               <div className="bg-light p-4 rounded border text-start fs-5">
                 <p>📍 {urgentOrder.pickup} &rarr; 🚩 {urgentOrder.dropoff}</p>
                 <div className="text-success fw-bold fs-2">{(urgentOrder.price * 0.8).toLocaleString()} đ</div>
+                <div className="text-muted mt-2">{urgentOrder.details}</div>
               </div>
             )}
          </Modal.Body>
