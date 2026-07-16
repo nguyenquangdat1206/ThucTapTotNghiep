@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Body
 from sqlalchemy.orm import Session
 import models, schemas, shutil, json
 from core import get_db, get_current_user, pwd_context, create_access_token, manager
@@ -31,6 +31,35 @@ def get_user_info(user_id: int, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user: raise HTTPException(404, "Not found")
     return user
+
+# ==========================================================
+# [MỚI] API CẬP NHẬT HỒ SƠ CHO CẢ KHÁCH VÀ TÀI XẾ
+# ==========================================================
+@router.put("/users/{user_id}/profile")
+def update_user_profile(user_id: int, payload: dict = Body(...), db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user: 
+        raise HTTPException(404, "Không tìm thấy người dùng")
+    
+    # Cập nhật thông tin cơ bản
+    if "name" in payload: 
+        user.name = payload["name"]
+    if "phone" in payload: 
+        user.phone = payload["phone"]
+    
+    # Xử lý cập nhật biển số nếu là tài xế
+    if "license_plate" in payload:
+        dp = db.query(models.DriverProfile).filter(models.DriverProfile.user_id == user_id).first()
+        if dp:
+            vehicle = db.query(models.Vehicle).filter(models.Vehicle.driver_id == dp.id).first()
+            if vehicle:
+                vehicle.license_plate = payload["license_plate"]
+    
+    db.commit()
+    db.refresh(user)
+    
+    # Trả về đúng payload để Frontend lưu vào LocalStorage
+    return payload
 
 @router.post("/users/{user_id}/avatar")
 async def upload_avatar(user_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
