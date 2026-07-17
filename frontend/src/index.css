@@ -1,0 +1,100 @@
+/* =========================================================
+   THEME: DARK FOREST & NEON ORANGE (LOGISTICS PRO)
+   ========================================================= */
+
+:root {
+  --bg-main: #0B130E;      /* Xanh đen nền tổng */
+  --bg-card: #14201A;      /* Xanh đen nhạt cho thẻ */
+  --bg-input: #1A2822;     /* Nền ô nhập liệu */
+  --border-color: #1E2D25; /* Viền thẻ */
+  --brand-orange: #FF6633; /* Cam chủ đạo */
+  --brand-orange-dim: rgba(255, 102, 51, 0.15);
+  --text-main: #F0F4F2;    /* Trắng sáng */
+  --text-muted: #84948C;   /* Xám rêu (phụ) */
+}
+
+body {
+  background-color: var(--bg-main) !important;
+  color: var(--text-main) !important;
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  margin: 0;
+  min-height: 100vh;
+}
+
+/* THẺ THÔNG TIN (Cards) */
+.logistics-card {
+  background-color: var(--bg-card) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 16px !important;
+  color: var(--text-main) !important;
+}
+
+/* GHI ĐÈ BOOTSTRAP CHỮ & NỀN */
+.text-dark { color: var(--text-main) !important; }
+.text-muted { color: var(--text-muted) !important; }
+.text-primary { color: var(--brand-orange) !important; }
+.text-danger { color: #FF4D4D !important; }
+.text-success { color: #4ADE80 !important; }
+.bg-light, .bg-white { background-color: var(--bg-card) !important; }
+
+/* NÚT BẤM CAM NEON ĐẶC TRƯNG */
+.btn-orange {
+  background-color: var(--brand-orange) !important;
+  color: #fff !important;
+  border: none !important;
+  font-weight: 600 !important;
+  border-radius: 12px !important;
+  transition: all 0.2s ease-in-out;
+}
+.btn-orange:hover {
+  background-color: #E55C2E !important;
+  transform: translateY(-2px);
+}
+.btn-orange:disabled {
+  background-color: #5A3D31 !important;
+  color: #8D8D8D !important;
+}
+
+/* Ô NHẬP LIỆU */
+.logistics-input {
+  background-color: var(--bg-input) !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-main) !important;
+  border-radius: 12px !important;
+  padding: 12px 16px !important;
+}
+.logistics-input:focus {
+  border-color: var(--brand-orange) !important;
+  box-shadow: 0 0 0 3px var(--brand-orange-dim) !important;
+  outline: none !important;
+}
+.logistics-input::placeholder { color: var(--text-muted) !important; }
+
+/* THẺ CHỌN PHƯƠNG TIỆN (VEHICLE SELECTOR) */
+.vehicle-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.vehicle-card:hover { border-color: #3A5043; }
+.vehicle-card.active {
+  border-color: var(--brand-orange);
+  background-color: var(--brand-orange-dim);
+}
+.vehicle-card.active .v-icon, .vehicle-card.active .v-price {
+  color: var(--brand-orange) !important;
+}
+
+/* ÉP BẢN ĐỒ VỀ CHẾ ĐỘ DARK MODE BẰNG FILTER CỰC MẠNH */
+.dark-map-container .leaflet-layer,
+.dark-map-container .leaflet-control-zoom-in,
+.dark-map-container .leaflet-control-zoom-out,
+.dark-map-container .leaflet-control-attribution {
+  filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+}
