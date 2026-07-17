@@ -2,6 +2,10 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import 'bootstrap/dist/css/bootstrap.min.css';
+
+// 👇 CHÍNH LÀ DÒNG NÀY ĐÂY! Kéo CSS giao diện Xanh/Cam vào hệ thống
+import './index.css'; 
+
 import { BrowserRouter } from 'react-router-dom';
 import axios from 'axios'; // Import thêm axios
 
