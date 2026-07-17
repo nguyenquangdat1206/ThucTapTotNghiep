@@ -91,42 +91,7 @@ body {
   color: var(--brand-orange) !important;
 }
 
-/* =========================================================
-   VÁ LỖI GIAO DIỆN DARK MODE BẢN ĐỒ LEAFLET
-   ========================================================= */
-
-/* 1. Ép bản đồ (chỉ lớp hình ảnh Tile) về chế độ Dark Mode */
-.dark-map-container .leaflet-tile-pane,
-.dark-map-container .leaflet-control-zoom-in,
-.dark-map-container .leaflet-control-zoom-out,
-.dark-map-container .leaflet-control-attribution {
-  filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
-}
-
-/* 2. VŨ KHÍ HẠNG NẶNG: Trị dứt điểm cái Popup trắng lóa của Leaflet */
-.leaflet-container .leaflet-popup-content-wrapper,
-.leaflet-container .leaflet-popup-tip {
-  background: #14201A !important; 
-  background-color: var(--bg-card) !important; 
-  border: 1px solid #1E2D25 !important;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.8) !important;
-}
-
-/* Ép toàn bộ các thẻ chữ bên trong popup thành màu trắng sáng */
-.leaflet-container .leaflet-popup-content,
-.leaflet-container .leaflet-popup-content p,
-.leaflet-container .leaflet-popup-content span,
-.leaflet-container .leaflet-popup-content b,
-.leaflet-container .leaflet-popup-content strong {
-  color: #F0F4F2 !important; 
-}
-
-/* Đổi nút (X) đóng popup thành màu Cam */
-.leaflet-container a.leaflet-popup-close-button {
-  color: #FF6633 !important; 
-}
-
-/* 3. Sửa lỗi các ô Input mặc định của Bootstrap bị trắng */
+/* SỬA LỖI Ô INPUT BỊ TRẮNG */
 .form-control, .form-select {
   background-color: var(--bg-input) !important;
   border: 1px solid var(--border-color) !important;

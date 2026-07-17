@@ -6,7 +6,6 @@ import axios from 'axios';
 import AddressSearchInput from '../components/AddressSearchInput';
 import BookingMap from '../components/BookingMap';
 
-// Đã khôi phục đầy đủ 8 Bến Cảng
 const PORT_LIST = [
   { name: "Cảng Cát Lái", lat: 10.7661, lng: 106.7820 },
   { name: "Cảng Tân Cảng Phú Hữu", lat: 10.7895, lng: 106.8138 },
@@ -72,15 +71,23 @@ export default function Booking() {
     } 
   }, [serviceType]);
 
+  // LOGIC TÍNH GIÁ ĐƯỢC KHÔI PHỤC HOÀN TOÀN
   useEffect(() => {
     if (distance > 0) {
       let calcBase = 0;
       if (serviceType === 'container') {
-        calcBase = distance <= 20 ? 2600000 : 2600000 + (Math.ceil(distance - 20) * 33000);
+        const BASE_CONTAINER = 2600000; // 2 triệu 6 cho 20km đầu
+        if (distance <= 20) {
+            calcBase = BASE_CONTAINER;
+        } else {
+            const extraKm = Math.ceil(distance - 20); 
+            calcBase = BASE_CONTAINER + (extraKm * (distance < 50 ? 33000 : distance < 100 ? 32000 : distance < 200 ? 31500 : 29500));
+        }
       } else if (serviceType === 'truck') {
         // Logic Xe tải: 150k cho 5km đầu, sau đó 15k/km
         calcBase = distance <= 5 ? 150000 : 150000 + (Math.ceil(distance - 5) * 15000);
       } else {
+        // Xe máy
         calcBase = distance <= 3 ? 16000 : 25000 + Math.ceil(distance - 5) * 6500; 
       }
       setBasePrice(Math.ceil(calcBase / 1000) * 1000);
@@ -226,7 +233,7 @@ export default function Booking() {
                       <small className="text-muted">Liên cảng • Hàng xuất nhập</small>
                     </div>
                   </div>
-                  <div className="fw-bold v-price text-muted">{basePrice > 0 && serviceType==='container' ? `${basePrice.toLocaleString()}đ` : 'Báo giá'}</div>
+                  <div className="fw-bold v-price text-muted">{basePrice > 0 && serviceType==='container' ? `${basePrice.toLocaleString()}đ` : 'Từ 2.600.000đ'}</div>
                 </div>
               </div>
 
@@ -306,7 +313,7 @@ export default function Booking() {
           </Col>
 
           {/* ============================================== */}
-          {/* CỘT PHẢI: BẢN ĐỒ DARK MODE VÀ HÀNH TRÌNH TẠM   */}
+          {/* CỘT PHẢI: BẢN ĐỒ VÀ HÀNH TRÌNH TẠM             */}
           {/* ============================================== */}
           <Col lg={6} className="border-start ps-lg-5" style={{ borderColor: 'var(--border-color) !important' }}>
              <div className="d-flex justify-content-between align-items-end mb-4">
@@ -317,8 +324,8 @@ export default function Booking() {
                 <h4 className="text-primary fw-bold mb-0">{finalTotalPrice.toLocaleString()}đ</h4>
              </div>
 
-             {/* MAP WRAPPER CÓ CSS FILTER MÀU ĐEN */}
-             <div className="logistics-card p-2 mb-4 dark-map-container" style={{ height: '350px', overflow: 'hidden' }}>
+             {/* MAP WRAPPER (Đã gỡ class dark-map-container để giữ map sáng rõ ràng) */}
+             <div className="logistics-card p-2 mb-4" style={{ height: '350px', overflow: 'hidden' }}>
                 <BookingMap 
                     pickupCoords={pickupCoords} setPickupCoords={setPickupCoords} 
                     dropoffCoords={dropoffCoords} setDropoffCoords={setDropoffCoords} 
