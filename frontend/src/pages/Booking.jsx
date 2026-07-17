@@ -6,10 +6,16 @@ import axios from 'axios';
 import AddressSearchInput from '../components/AddressSearchInput';
 import BookingMap from '../components/BookingMap';
 
+// Đã khôi phục đầy đủ 8 Bến Cảng
 const PORT_LIST = [
   { name: "Cảng Cát Lái", lat: 10.7661, lng: 106.7820 },
   { name: "Cảng Tân Cảng Phú Hữu", lat: 10.7895, lng: 106.8138 },
-  { name: "Cảng Tân Cảng Hiệp Phước", lat: 10.6272, lng: 106.7594 }
+  { name: "Cảng Tân Cảng Hiệp Phước", lat: 10.6272, lng: 106.7594 },
+  { name: "Cảng Container Quốc tế Việt Nam (VICT)", lat: 10.7437, lng: 106.7322 },
+  { name: "Cảng Tân Thuận", lat: 10.7578, lng: 106.7419 },
+  { name: "Cảng Bến Nghé", lat: 10.7538, lng: 106.7383 },
+  { name: "Cảng Saigon Premier Container Terminal (SPCT)", lat: 10.6214, lng: 106.7567 },
+  { name: "Cảng Container Quốc tế SP-ITC", lat: 10.7905, lng: 106.8202 }
 ];
 
 export default function Booking() {
@@ -72,6 +78,7 @@ export default function Booking() {
       if (serviceType === 'container') {
         calcBase = distance <= 20 ? 2600000 : 2600000 + (Math.ceil(distance - 20) * 33000);
       } else if (serviceType === 'truck') {
+        // Logic Xe tải: 150k cho 5km đầu, sau đó 15k/km
         calcBase = distance <= 5 ? 150000 : 150000 + (Math.ceil(distance - 5) * 15000);
       } else {
         calcBase = distance <= 3 ? 16000 : 25000 + Math.ceil(distance - 5) * 6500; 
