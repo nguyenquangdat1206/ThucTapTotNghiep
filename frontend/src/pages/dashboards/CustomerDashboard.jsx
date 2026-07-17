@@ -67,99 +67,128 @@ export default function CustomerDashboard({ userInfo }) {
 
   const getStatusBadge = (status) => {
     switch(status) {
-      case 'pending': return <Badge bg="secondary" className="shadow-sm p-2">Đang tìm tài xế</Badge>;
-      case 'accepted': return <Badge bg="info" className="shadow-sm p-2">Tài xế đang đến</Badge>;
-      case 'picking_up': return <Badge bg="warning" text="dark" className="shadow-sm p-2">Đã lấy hàng</Badge>;
-      case 'delivering': return <Badge bg="primary" className="shadow-sm p-2">Đang giao hàng</Badge>;
-      case 'completed': return <Badge bg="success" className="shadow-sm p-2">Đã hoàn thành</Badge>;
-      case 'cancel_requested': return <Badge bg="danger" className="shadow-sm p-2">Yêu cầu hủy</Badge>;
-      case 'cancelled': return <Badge bg="dark" className="shadow-sm p-2">Đã hủy</Badge>;
-      default: return <Badge bg="light" text="dark" className="shadow-sm p-2">{status}</Badge>;
+      case 'pending': return <Badge bg="secondary" className="px-3 py-2">Đang tìm tài xế</Badge>;
+      case 'accepted': return <Badge bg="info" className="px-3 py-2 text-dark">Tài xế đang đến</Badge>;
+      case 'picking_up': return <Badge bg="warning" className="px-3 py-2 text-dark">Đã lấy hàng</Badge>;
+      case 'delivering': return <Badge style={{backgroundColor: 'var(--brand-orange)'}} className="px-3 py-2 text-white">Đang giao hàng</Badge>;
+      case 'completed': return <Badge bg="success" className="px-3 py-2">Đã hoàn thành</Badge>;
+      case 'cancel_requested': return <Badge bg="danger" className="px-3 py-2">Yêu cầu hủy</Badge>;
+      case 'cancelled': return <Badge bg="dark" className="px-3 py-2 border border-secondary">Đã hủy</Badge>;
+      default: return <Badge bg="light" className="px-3 py-2 text-dark">{status}</Badge>;
     }
   };
 
   if (loading) return <DashboardSkeleton />;
 
+  // Tìm xem có đơn nào đang chạy không (Live Tracking giả lập)
+  const activeOrders = myOrders.filter(o => ['pending', 'accepted', 'picking_up', 'delivering'].includes(o.status));
+
   return (
-    <Container className="mt-5 mb-5" style={{ maxWidth: '900px', position: 'relative', zIndex: 1 }}>
-      
-      {/* HEADER THỦY TINH */}
-      <div className="glass-card p-4 mb-4 border-top border-primary border-4">
-        <div className="d-flex justify-content-between align-items-center flex-wrap">
-          <div className="d-flex align-items-center mb-3 mb-md-0">
+    <Container fluid className="py-5" style={{ backgroundColor: 'var(--bg-main)', minHeight: '100vh' }}>
+      <Container style={{ maxWidth: '900px' }}>
+        
+        {/* HEADER DARK FOREST */}
+        <div className="d-flex justify-content-between align-items-center mb-5 pb-3 border-bottom" style={{ borderColor: 'var(--border-color)' }}>
+          <div className="d-flex align-items-center">
             {userInfo.avatar_url ? (
-              <img src={userInfo.avatar_url} alt="avt" style={{width: '70px', height: '70px', borderRadius: '50%', objectFit: 'cover', marginRight: '15px', border: '3px solid rgba(13, 110, 253, 0.5)'}} />
-            ) : <div style={{width: '70px', height: '70px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '15px', fontSize: '30px', backdropFilter: 'blur(5px)'}}>👤</div>}
+              <img src={userInfo.avatar_url} alt="avt" style={{width: '60px', height: '60px', borderRadius: '12px', objectFit: 'cover', marginRight: '15px', border: '2px solid var(--border-color)'}} />
+            ) : <div style={{width: '60px', height: '60px', borderRadius: '12px', backgroundColor: 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '15px', fontSize: '24px', border: '1px solid var(--border-color)'}}>👤</div>}
             <div>
-              <h4 className="mb-1 fw-bold text-dark">Xin chào, {userInfo.name}!</h4>
-              <Badge bg="primary" className="fs-6 shadow-sm">KHÁCH HÀNG</Badge>
+              <p className="text-muted mb-0" style={{fontSize: '14px'}}>Xin chào,</p>
+              <h4 className="fw-bold text-white mb-0">{userInfo.name} 👋</h4>
             </div>
           </div>
           <div className="d-flex gap-2">
-            <Button variant="outline-primary" className="glass-btn" onClick={() => setShowProfileModal(true)}>✏️ Hồ sơ</Button>
-            <Button variant="outline-danger" className="glass-btn text-danger fw-bold border-danger" onClick={handleLogout}>Đăng xuất</Button>
+            <Button variant="outline-light" style={{borderColor: 'var(--border-color)', color: 'var(--text-muted)'}} onClick={() => setShowProfileModal(true)}>Hồ sơ</Button>
+            <Button variant="outline-danger" className="fw-bold" onClick={handleLogout}>Thoát</Button>
           </div>
         </div>
-      </div>
-        
-      {actionMessage && <Alert variant={actionMessage.includes('❌') ? 'danger' : 'success'} className="glass-card fw-bold">{actionMessage}</Alert>}
-        
-      <div>
-        {/* NÚT ĐẶT ĐƠN KHỔNG LỒ */}
-        <Button 
-            size="lg" 
-            className="glass-btn-primary w-100 fw-bold mb-5 shadow-lg d-flex justify-content-center align-items-center gap-2" 
-            style={{ height: '70px', fontSize: '1.2rem', borderRadius: '20px' }}
-            onClick={() => navigate('/booking')}
-        >
-            <span className="fs-3">+</span> ĐẶT ĐƠN HÀNG MỚI
-        </Button>
+          
+        {actionMessage && <Alert variant={actionMessage.includes('❌') ? 'danger' : 'success'} className="logistics-card border-0 fw-bold">{actionMessage}</Alert>}
+          
+        {/* NÚT ĐẶT ĐƠN KHỔNG LỒ (CALL TO ACTION) */}
+        <div className="logistics-card p-4 mb-5 text-center" style={{ border: '1px solid var(--brand-orange)' }}>
+            <h4 className="text-white fw-bold mb-2">Bạn đang muốn giao gì hôm nay?</h4>
+            <p className="text-muted mb-4">Giao nhanh xe máy, thuê tải chở hàng hay book container đi tỉnh.</p>
+            <Button className="btn-orange w-100 py-3 fs-5" onClick={() => navigate('/booking')}>
+                + TẠO VẬN ĐƠN MỚI NGAY
+            </Button>
+        </div>
 
-        <h4 className="fw-bold text-dark mb-4" style={{ textShadow: '0 2px 4px rgba(255,255,255,0.8)' }}>Lịch sử đơn hàng của tôi</h4>
+        {/* THẺ ĐƠN ĐANG CHẠY (NỔI BẬT NẾU CÓ) */}
+        {activeOrders.length > 0 && (
+          <div className="mb-5">
+            <h5 className="fw-bold text-white mb-3 d-flex align-items-center gap-2">
+              <span className="spinner-grow spinner-grow-sm text-primary" style={{color: 'var(--brand-orange) !important'}}></span>
+              Đơn hàng đang hoạt động
+            </h5>
+            {activeOrders.map(order => (
+              <div key={order.id} className="logistics-card p-4 mb-3" style={{ borderLeft: '4px solid var(--brand-orange)' }}>
+                <div className="d-flex justify-content-between align-items-center flex-wrap">
+                  <div className="mb-3 mb-md-0">
+                    <h6 className="fw-bold text-white mb-2">Vận đơn <span style={{color: 'var(--brand-orange)'}}>#{order.id}</span></h6>
+                    <div>{getStatusBadge(order.status)}</div>
+                  </div>
+                  <Button variant="outline-light" className="fw-bold" style={{borderColor: 'var(--brand-orange)', color: 'var(--brand-orange)'}} onClick={() => navigate(`/order/${order.id}`)}>
+                      Theo dõi trực tiếp 📍
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <h5 className="fw-bold text-white mb-3">Lịch sử giao dịch</h5>
         
-        {myOrders.length === 0 ? (
-            <div className="glass-card p-5 text-center text-muted fw-bold border-dashed fs-5">
-                Chưa có đơn hàng nào. Hãy đặt ngay một cuốc xe nhé!
+        {myOrders.filter(o => !['pending', 'accepted', 'picking_up', 'delivering'].includes(o.status)).length === 0 ? (
+            <div className="logistics-card p-5 text-center text-muted fw-bold border-dashed fs-6" style={{ borderStyle: 'dashed' }}>
+                Chưa có lịch sử chuyến đi nào hoàn tất.
             </div>
         ) : (
             <div className="d-flex flex-column gap-3">
-              {myOrders.map(order => (
-                <div key={order.id} className="glass-card p-4 border-start border-4 border-primary shadow-sm d-flex justify-content-between align-items-center flex-wrap">
-                  <div className="mb-3 mb-md-0">
-                    <h5 className="fw-bold text-dark mb-2">Mã Đơn: <span className="text-primary">#{order.id}</span></h5>
-                    <div className="d-flex align-items-center gap-2">
-                        <span className="text-muted fw-bold">Trạng thái: </span>
-                        {getStatusBadge(order.status)}
-                    </div>
+              {myOrders.filter(o => !['pending', 'accepted', 'picking_up', 'delivering'].includes(o.status)).map(order => (
+                <div key={order.id} className="logistics-card p-3 d-flex justify-content-between align-items-center flex-wrap">
+                  <div className="mb-2 mb-md-0">
+                    <strong className="text-white">Mã Đơn: #{order.id}</strong>
+                    <div className="mt-2">{getStatusBadge(order.status)}</div>
                   </div>
-                  <Button variant="outline-primary" className="glass-btn fw-bold px-4 py-2" onClick={() => navigate(`/order/${order.id}`)}>
-                      👁️ Xem chi tiết đơn
+                  <Button variant="outline-secondary" size="sm" className="fw-bold text-muted border-0" onClick={() => navigate(`/order/${order.id}`)}>
+                      Xem chi tiết &rarr;
                   </Button>
                 </div>
               ))}
             </div>
         )}
-      </div>
 
-      {/* MODAL CẬP NHẬT HỒ SƠ */}
-      <Modal show={showProfileModal} onHide={() => setShowProfileModal(false)} centered contentClassName="glass-card border-0">
-        <Modal.Header closeButton className="border-bottom border-light">
-            <Modal.Title className="fw-bold text-dark">Hồ Sơ Cá Nhân</Modal.Title>
-        </Modal.Header>
-        <Form onSubmit={handleUpdateProfile}>
-          <Modal.Body>
-            <Form.Group className="mb-3"><Form.Label className="fw-bold">Họ và Tên</Form.Label><Form.Control type="text" className="glass-input" value={profileForm.name} onChange={(e) => setProfileForm({...profileForm, name: e.target.value})} required /></Form.Group>
-            <Form.Group className="mb-3"><Form.Label className="fw-bold">Số điện thoại</Form.Label><Form.Control type="tel" className="glass-input" value={profileForm.phone} onChange={(e) => setProfileForm({...profileForm, phone: e.target.value})} /></Form.Group>
-            <Form.Group className="mb-3"><Form.Label className="fw-bold">Ảnh đại diện (Tải từ máy)</Form.Label><Form.Control type="file" className="glass-input" accept="image/*" onChange={(e) => setAvatarFile(e.target.files[0])} /></Form.Group>
-          </Modal.Body>
-          <Modal.Footer className="border-top border-light">
-              <Button variant="secondary" className="glass-btn" onClick={() => setShowProfileModal(false)}>Hủy</Button>
-              <Button variant="primary" type="submit" className="glass-btn-primary">Lưu thay đổi</Button>
-          </Modal.Footer>
-        </Form>
-      </Modal>
+        {/* MODAL CẬP NHẬT HỒ SƠ */}
+        <Modal show={showProfileModal} onHide={() => setShowProfileModal(false)} centered contentClassName="logistics-card border-0">
+          <Modal.Header closeButton className="border-bottom" style={{borderColor: 'var(--border-color)'}}>
+              <Modal.Title className="fw-bold text-white">Hồ Sơ Cá Nhân</Modal.Title>
+          </Modal.Header>
+          <Form onSubmit={handleUpdateProfile}>
+            <Modal.Body className="p-4">
+              <Form.Group className="mb-3">
+                <Form.Label className="text-muted fw-bold" style={{fontSize: '13px'}}>HỌ VÀ TÊN</Form.Label>
+                <Form.Control type="text" className="logistics-input" value={profileForm.name} onChange={(e) => setProfileForm({...profileForm, name: e.target.value})} required />
+              </Form.Group>
+              <Form.Group className="mb-3">
+                <Form.Label className="text-muted fw-bold" style={{fontSize: '13px'}}>SỐ ĐIỆN THOẠI</Form.Label>
+                <Form.Control type="tel" className="logistics-input" value={profileForm.phone} onChange={(e) => setProfileForm({...profileForm, phone: e.target.value})} />
+              </Form.Group>
+              <Form.Group className="mb-3">
+                <Form.Label className="text-muted fw-bold" style={{fontSize: '13px'}}>ẢNH ĐẠI DIỆN</Form.Label>
+                <Form.Control type="file" className="logistics-input" accept="image/*" onChange={(e) => setAvatarFile(e.target.files[0])} />
+              </Form.Group>
+            </Modal.Body>
+            <Modal.Footer className="border-top" style={{borderColor: 'var(--border-color)'}}>
+                <Button variant="outline-secondary" className="text-muted border-0" onClick={() => setShowProfileModal(false)}>Hủy</Button>
+                <Button type="submit" className="btn-orange px-4">Lưu thay đổi</Button>
+            </Modal.Footer>
+          </Form>
+        </Modal>
 
-      <SupportWidget userInfo={userInfo} />
+        <SupportWidget userInfo={userInfo} />
+      </Container>
     </Container>
   );
 }

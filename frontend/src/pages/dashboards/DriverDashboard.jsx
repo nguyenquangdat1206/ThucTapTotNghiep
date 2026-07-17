@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Button, Alert, Badge, Modal, Form } from 'react-bootstrap';
+import { Container, Button, Alert, Badge, Modal, Form, Row, Col } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import DashboardSkeleton from '../../components/DashboardSkeleton';
@@ -107,20 +107,6 @@ export default function DriverDashboard({ userInfo }) {
   const stopAlertSound = () => { if (audioInstance) { audioInstance.pause(); setAudioInstance(null); } };
   const handleLogout = () => { stopAlertSound(); localStorage.removeItem('userInfo'); navigate('/'); };
 
-  const getStatusBadge = (status) => {
-    switch(status) {
-      case 'pending': return <Badge bg="secondary">Đang tìm tài xế</Badge>;
-      case 'accepted': return <Badge bg="info">Tài xế đang đến</Badge>;
-      case 'arrived_pickup': return <Badge bg="primary">Đã tới điểm lấy</Badge>;
-      case 'picking_up': return <Badge bg="warning" text="dark">Đã lấy hàng</Badge>;
-      case 'delivering': return <Badge bg="danger">Đã tới điểm giao</Badge>;
-      case 'completed': return <Badge bg="success">Đã hoàn thành</Badge>;
-      case 'cancel_requested': return <Badge bg="danger">Yêu cầu hủy</Badge>;
-      case 'cancelled': return <Badge bg="dark">Đã hủy</Badge>;
-      default: return <Badge bg="light" text="dark">{status}</Badge>;
-    }
-  };
-
   if (loading) return <DashboardSkeleton />;
 
   const groupedPendingOrders = Object.values(pendingOrders.reduce((acc, order) => {
@@ -146,148 +132,172 @@ export default function DriverDashboard({ userInfo }) {
   }, {}));
 
   return (
-    <Container className="mt-5 mb-5" style={{ position: 'relative', zIndex: 1 }}>
-      
-      {/* HEADER THỦY TINH */}
-      <div className="glass-card p-4 mb-4 border-top border-success border-4">
-        <div className="d-flex justify-content-between align-items-center flex-wrap">
+    <Container fluid className="py-5" style={{ backgroundColor: 'var(--bg-main)', minHeight: '100vh' }}>
+      <Container style={{ maxWidth: '900px' }}>
+        
+        {/* HEADER DRIVER */}
+        <div className="logistics-card p-4 mb-4 d-flex justify-content-between align-items-center flex-wrap">
           <div className="d-flex align-items-center mb-3 mb-md-0">
             {userInfo.avatar_url ? (
-              <img src={userInfo.avatar_url} alt="avatar" style={{width: '70px', height: '70px', borderRadius: '50%', objectFit: 'cover', marginRight: '15px', border: '3px solid rgba(25, 135, 84, 0.5)'}} />
-            ) : <div style={{width: '70px', height: '70px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '15px', fontSize: '30px', backdropFilter: 'blur(5px)'}}>🛵</div>}
-            
+              <img src={userInfo.avatar_url} alt="avatar" style={{width: '65px', height: '60px', borderRadius: '12px', objectFit: 'cover', marginRight: '15px'}} />
+            ) : <div style={{width: '60px', height: '60px', borderRadius: '12px', backgroundColor: 'var(--bg-input)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '15px', fontSize: '24px', border: '1px solid var(--border-color)'}}>🛵</div>}
             <div>
-              <h4 className="mb-1 fw-bold text-dark">Xin chào, {userInfo.name}!</h4>
-              <div className="d-flex align-items-center mt-2 flex-wrap gap-2">
-                <Badge bg={userInfo.role.startsWith('pending') ? "warning" : "info"} text="dark" className="fs-6 shadow-sm">
-                  {userInfo.role === 'driver_express' ? 'TÀI XẾ XE MÁY' : 'TÀI XẾ CONTAINER'}
+              <h5 className="mb-1 fw-bold text-white">{userInfo.name}</h5>
+              <div className="d-flex align-items-center gap-2">
+                <Badge bg="dark" className="border border-secondary text-white">
+                  {userInfo.role === 'driver_express' ? 'XE MÁY' : 'CONTAINER'}
                 </Badge>
-                <Button variant="success" size="sm" className="glass-btn-primary px-3 shadow-sm" onClick={() => navigate('/wallet')}>💰 Ví: {userBalance.toLocaleString()} đ</Button>
-                <div className="glass-card px-3 py-1 shadow-sm d-flex align-items-center" style={{ borderLeft: isReady ? '4px solid #198754' : '4px solid #dc3545' }}>
-                  <Form.Check type="switch" id="driver-ready-switch" label={isReady ? "🟢 Đang nhận đơn" : "🔴 Nghỉ ngơi"} checked={isReady} onChange={handleToggleReady} className={`fw-bold mb-0 ${isReady ? 'text-success' : 'text-danger'}`} />
-                </div>
+                <Badge bg="success" className="px-2 cursor-pointer" onClick={() => navigate('/wallet')}>💰 {userBalance.toLocaleString()}đ</Badge>
               </div>
             </div>
           </div>
           <div className="d-flex gap-2">
-            <Button variant="outline-dark" className="glass-btn" onClick={() => setShowProfileModal(true)}>✏️ Hồ sơ</Button>
-            <Button variant="outline-danger" className="glass-btn text-danger fw-bold border-danger" onClick={handleLogout}>Đăng xuất</Button>
+            <Button variant="outline-light" style={{borderColor: 'var(--border-color)'}} onClick={() => setShowProfileModal(true)}>Hồ sơ</Button>
+            <Button variant="outline-danger" onClick={handleLogout}>Thoát</Button>
           </div>
         </div>
-      </div>
 
-      {!isReady && (
-        <Alert variant="danger" className="glass-card text-center shadow-sm fw-bold border-danger border-start border-4 mt-3 p-3">
-          <h4 className="mb-2 text-danger">😴 BẠN ĐANG TRONG TRẠNG THÁI NGHỈ NGƠI!</h4>
-          <span className="text-dark">Hệ thống phân đơn Radar đã bị vô hiệu hóa. Bạn sẽ không nhận được đơn hàng mới nào.</span>
-        </Alert>
-      )}
-      
-      {actionMessage && <Alert variant={actionMessage.includes('❌') ? 'danger' : 'success'} className="glass-card fw-bold">{actionMessage}</Alert>}
-      
-      <div className="mt-4">
-        <h4 className="fw-bold text-dark mb-3" style={{ textShadow: '0 2px 4px rgba(255,255,255,0.8)' }}>📡 Radar: Đơn hàng quanh đây</h4>
+        {/* CÔNG TẮC TRỰC TUYẾN / NGOẠI TUYẾN CHUYÊN NGHIỆP */}
+        <div className="logistics-card p-4 mb-4 text-center">
+            <h6 className="text-muted text-uppercase fw-bold mb-3">TRẠNG THÁI HOẠT ĐỘNG</h6>
+            <div className="d-flex justify-content-center">
+                <Button 
+                    className={`fw-bold px-5 py-2 ${isReady ? 'btn-orange' : 'btn-secondary text-white'}`}
+                    style={{ borderRadius: '30px', border: 'none', minWidth: '250px', backgroundColor: isReady ? 'var(--brand-orange)' : '#333' }}
+                    onClick={handleToggleReady}
+                >
+                    {isReady ? '🟢 ĐANG NHẬN ĐƠN (ONLINE)' : '😴 ĐANG NGHỈ NGƠI (OFFLINE)'}
+                </Button>
+            </div>
+            {!isReady && <small className="text-danger d-block mt-3 fw-bold">Hệ thống phân đơn Radar đang tạm dừng!</small>}
+        </div>
         
-        {!isReady ? (
-          <div className="glass-card p-5 text-center shadow-sm border-danger border-2" style={{ borderStyle: 'dashed !important' }}>
-            <div className="fs-1 mb-2">📡 ❌</div>
-            <h5 className="text-danger fw-bold">Radar đã bị ngắt kết nối</h5>
-          </div>
-        ) : groupedPendingOrders.length === 0 ? (
-          <div className="glass-card p-4 text-center text-muted fw-bold">Không có đơn nào mới quanh bạn.</div>
-        ) : (
-          <div className="d-flex flex-column gap-3">
-            {groupedPendingOrders.map((order, idx) => (
-              <div key={idx} className="glass-card p-4 border-start border-4 border-warning shadow-sm transition-hover">
-                <div className="d-flex justify-content-between align-items-center flex-wrap">
-                  <div className="mb-3 mb-md-0">
-                    <h5 className="fw-bold mb-2">
-                      {order.is_batch ? <Badge bg="danger" className="fs-6 shadow-sm">📦 GHÉP BATCH</Badge> : <span className="text-primary">Đơn #{order.id}</span>}
-                    </h5>
-                    <div className="text-dark fs-6" style={{ maxWidth: '600px' }}>
-                      {order.is_batch ? (
-                        <span className="fw-bold text-danger">📍 Lộ trình ghép (Nhiều điểm Lấy / Giao)</span>
-                      ) : (
-                        <>
-                          <div className="mb-1"><strong>📍 Lấy:</strong> {order.pickup_location}</div>
-                          <div><strong>🚩 Giao:</strong> {order.dropoff_location}</div>
-                        </>
-                      )}
+        {actionMessage && <Alert variant={actionMessage.includes('❌') ? 'danger' : 'success'} className="logistics-card border-0 fw-bold">{actionMessage}</Alert>}
+        
+        {/* RADAR QUÉT ĐƠN HÀNG */}
+        <div className="mt-5">
+          <h5 className="fw-bold text-white mb-3 d-flex align-items-center gap-2">
+             <span className="fs-5">📡</span> ĐƠN HÀNG MỚI XUNG QUANH
+          </h5>
+          
+          {!isReady ? (
+            <div className="logistics-card p-5 text-center text-muted fw-bold border-dashed" style={{ borderStyle: 'dashed' }}>
+              Vui lòng bật trạng thái Đang Nhận Đơn để quét chuyến.
+            </div>
+          ) : groupedPendingOrders.length === 0 ? (
+            <div className="logistics-card p-4 text-center text-muted fw-bold">
+              Chưa có tín hiệu đơn hàng mới...
+            </div>
+          ) : (
+            <div className="d-flex flex-column gap-3">
+              {groupedPendingOrders.map((order, idx) => (
+                <div key={idx} className="logistics-card p-4" style={{ borderLeft: '4px solid #4ADE80' }}>
+                  <div className="d-flex justify-content-between align-items-center flex-wrap">
+                    <div className="mb-3 mb-md-0" style={{ maxWidth: '600px' }}>
+                      <h6 className="fw-bold text-white mb-2">
+                        {order.is_batch ? <Badge bg="danger" className="me-2">📦 GHÉP BATCH</Badge> : <span className="text-muted me-2">Mã: #{order.id}</span>}
+                      </h6>
+                      <div className="text-muted fs-6">
+                        {order.is_batch ? (
+                          <span className="fw-bold text-white">📍 Chuyến đi nhiều trạm (Ghép lộ trình)</span>
+                        ) : (
+                          <>
+                            <div className="mb-1"><strong>📍 Điểm lấy:</strong> <span className="text-white">{order.pickup_location}</span></div>
+                            <div><strong>🚩 Điểm giao:</strong> <span className="text-white">{order.dropoff_location}</span></div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-end">
+                      <h3 className="fw-bold mb-3" style={{ color: '#4ADE80' }}>{order.total_price.toLocaleString()} đ</h3>
+                      <div className="d-flex gap-2 justify-content-end">
+                          <Button variant="outline-light" style={{borderColor: 'var(--border-color)'}} onClick={() => navigate(`/order/${order.ids[0]}`)}>Chi tiết</Button>
+                          <Button className="btn-orange px-4" onClick={() => handleAcceptOrder(order.ids[0])}>🤝 CHỐT ĐƠN</Button>
+                      </div>
                     </div>
                   </div>
-                  <div className="text-end">
-                    <h3 className="text-success fw-bold mb-3" style={{ textShadow: '1px 1px 2px rgba(255,255,255,0.8)' }}>{order.total_price.toLocaleString()} đ</h3>
-                    <div className="d-flex gap-2 justify-content-end">
-                        <Button variant="outline-primary" className="glass-btn px-4" onClick={() => navigate(`/order/${order.ids[0]}`)}>👁️ Xem</Button>
-                        <Button variant="success" className="glass-btn-primary px-4" onClick={() => handleAcceptOrder(order.ids[0])}>🤝 Nhận Cuốc</Button>
-                    </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <h5 className="fw-bold text-white mt-5 mb-3">🏍️ CHUYẾN ĐI CỦA TÔI</h5>
+          {groupedMyOrders.length === 0 ? (
+            <div className="logistics-card p-4 text-center text-muted fw-bold">Bạn chưa nhận chuyến xe nào.</div>
+          ) : (
+            <div className="d-flex flex-column gap-3">
+              {groupedMyOrders.map((order, idx) => (
+                <div key={idx} className="logistics-card p-3 d-flex justify-content-between align-items-center flex-wrap" style={{ borderLeft: '4px solid var(--text-muted)' }}>
+                  <div className="mb-2 mb-md-0">
+                    <strong className="text-white">
+                      {order.is_batch ? `📦 CHUYẾN GHÉP (${order.ids.length} TRẠM)` : `Đơn #${order.id}`}
+                    </strong>
                   </div>
+                  <Button variant="outline-secondary" size="sm" className="fw-bold text-white border-0" onClick={() => navigate(`/order/${order.ids[0]}`)}>
+                      Mở Lộ Trình &rarr;
+                  </Button>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
 
-        <h4 className="fw-bold text-dark mt-5 mb-3" style={{ textShadow: '0 2px 4px rgba(255,255,255,0.8)' }}>🏍️ Cuốc xe của tôi</h4>
-        {groupedMyOrders.length === 0 ? (
-          <div className="glass-card p-4 text-center text-muted fw-bold">Bạn chưa nhận cuốc nào.</div>
-        ) : (
-          <div className="d-flex flex-column gap-3">
-            {groupedMyOrders.map((order, idx) => (
-              <div key={idx} className="glass-card p-3 border-start border-4 border-info shadow-sm d-flex justify-content-between align-items-center flex-wrap">
-                <div className="mb-2 mb-md-0">
-                  <h5 className="fw-bold mb-2">
-                    {order.is_batch ? <Badge bg="danger" className="shadow-sm">📦 CHUYẾN GHÉP ({order.ids.length} ĐƠN)</Badge> : <span className="text-dark">Đơn #{order.id}</span>}
-                  </h5>
-                  <div>{getStatusBadge(order.status)}</div>
+        {/* MODAL CẬP NHẬT HỒ SƠ */}
+        <Modal show={showProfileModal} onHide={() => setShowProfileModal(false)} centered contentClassName="logistics-card border-0">
+          <Modal.Header closeButton className="border-bottom" style={{borderColor: 'var(--border-color)'}}>
+              <Modal.Title className="fw-bold text-white">Hồ Sơ Đối Tác</Modal.Title>
+          </Modal.Header>
+          <Form onSubmit={handleUpdateProfile}>
+            <Modal.Body className="p-4">
+              <Form.Group className="mb-3">
+                <Form.Label className="text-muted fw-bold" style={{fontSize: '13px'}}>HỌ VÀ TÊN</Form.Label>
+                <Form.Control type="text" className="logistics-input" value={profileForm.name} onChange={(e) => setProfileForm({...profileForm, name: e.target.value})} required />
+              </Form.Group>
+              <Form.Group className="mb-3">
+                <Form.Label className="text-muted fw-bold" style={{fontSize: '13px'}}>SỐ ĐIỆN THOẠI</Form.Label>
+                <Form.Control type="tel" className="logistics-input" value={profileForm.phone} onChange={(e) => setProfileForm({...profileForm, phone: e.target.value})} />
+              </Form.Group>
+              <Form.Group className="mb-3">
+                <Form.Label className="text-muted fw-bold" style={{fontSize: '13px'}}>BIỂN SỐ XE</Form.Label>
+                <Form.Control type="text" className="logistics-input text-uppercase" value={profileForm.license_plate} onChange={(e) => setProfileForm({...profileForm, license_plate: e.target.value})} required />
+              </Form.Group>
+              <Form.Group className="mb-3">
+                <Form.Label className="text-muted fw-bold" style={{fontSize: '13px'}}>ẢNH ĐẠI DIỆN</Form.Label>
+                <Form.Control type="file" className="logistics-input" accept="image/*" onChange={(e) => setAvatarFile(e.target.files[0])} />
+              </Form.Group>
+            </Modal.Body>
+            <Modal.Footer className="border-top" style={{borderColor: 'var(--border-color)'}}>
+                <Button variant="outline-secondary" className="text-muted border-0" onClick={() => setShowProfileModal(false)}>Hủy</Button>
+                <Button type="submit" className="btn-orange px-4">Cập nhật hồ sơ</Button>
+            </Modal.Footer>
+          </Form>
+        </Modal>
+
+        {/* POPUP BÁO ĐỘNG ĐƠN KHẨN CẤP */}
+        <Modal show={showUrgentPopup} onHide={() => {}} backdrop="static" centered size="lg" contentClassName="logistics-card border-0" style={{ border: '2px solid var(--brand-orange) !important', boxShadow: '0 0 30px rgba(255, 102, 51, 0.4)' }}>
+           <Modal.Header className="text-center d-block border-0 rounded-top pb-0 mt-3">
+               <Modal.Title className="fw-bold fs-3 text-white">🚨 CÓ ĐƠN ĐIỀU PHỐI KHẨN CẤP! 🚨</Modal.Title>
+           </Modal.Header>
+           <Modal.Body className="p-4 text-center">
+              {urgentOrder && (
+                <div className="bg-dark p-4 rounded-3 border" style={{ borderColor: 'var(--border-color)' }}>
+                  <p className="fs-5 text-muted fw-bold mb-4">📍 {urgentOrder.pickup} <br/><br/><span className="text-white fs-4">⬇️</span><br/><br/>🚩 {urgentOrder.dropoff}</p>
+                  <div className="fw-bold" style={{ fontSize: '3rem', color: '#4ADE80' }}>
+                      {(urgentOrder.price * 0.8).toLocaleString()} đ
+                  </div>
+                  <div className="text-danger fw-bold mt-3 fs-5">{urgentOrder.details}</div>
                 </div>
-                <Button variant="info" className="glass-btn text-primary border-info fw-bold px-4" onClick={() => navigate(`/order/${order.ids[0]}`)}>🧭 Mở Lộ Trình</Button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <Modal show={showProfileModal} onHide={() => setShowProfileModal(false)} centered contentClassName="glass-card border-0">
-        <Modal.Header closeButton className="border-bottom border-light">
-            <Modal.Title className="fw-bold text-dark">Hồ Sơ Cá Nhân</Modal.Title>
-        </Modal.Header>
-        <Form onSubmit={handleUpdateProfile}>
-          <Modal.Body>
-            <Form.Group className="mb-3"><Form.Label className="fw-bold">Họ và Tên</Form.Label><Form.Control type="text" className="glass-input" value={profileForm.name} onChange={(e) => setProfileForm({...profileForm, name: e.target.value})} required /></Form.Group>
-            <Form.Group className="mb-3"><Form.Label className="fw-bold">Số điện thoại</Form.Label><Form.Control type="tel" className="glass-input" value={profileForm.phone} onChange={(e) => setProfileForm({...profileForm, phone: e.target.value})} /></Form.Group>
-            <Form.Group className="mb-3"><Form.Label className="fw-bold">Biển số</Form.Label><Form.Control type="text" className="glass-input" value={profileForm.license_plate} onChange={(e) => setProfileForm({...profileForm, license_plate: e.target.value})} required /></Form.Group>
-            <Form.Group className="mb-3"><Form.Label className="fw-bold">Ảnh đại diện</Form.Label><Form.Control type="file" className="glass-input" accept="image/*" onChange={(e) => setAvatarFile(e.target.files[0])} /></Form.Group>
-          </Modal.Body>
-          <Modal.Footer className="border-top border-light">
-              <Button variant="secondary" className="glass-btn" onClick={() => setShowProfileModal(false)}>Hủy</Button>
-              <Button variant="success" type="submit" className="glass-btn-primary">Lưu thay đổi</Button>
-          </Modal.Footer>
-        </Form>
-      </Modal>
-
-      <Modal show={showUrgentPopup} onHide={() => {}} backdrop="static" centered size="lg" contentClassName="glass-card border-danger border-4">
-         <Modal.Header className="bg-danger text-white text-center d-block border-0 rounded-top" style={{ opacity: 0.9 }}>
-             <Modal.Title className="fw-bold fs-3">🚨 HỆ THỐNG PHÂN ĐƠN! 🚨</Modal.Title>
-         </Modal.Header>
-         <Modal.Body className="p-5 text-center">
-            {urgentOrder && (
-              <div>
-                <p className="fs-4 text-dark fw-bold mb-4">📍 {urgentOrder.pickup} <br/><br/>⬇️<br/><br/>🚩 {urgentOrder.dropoff}</p>
-                <div className="text-success fw-bold" style={{ fontSize: '3rem', textShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-                    {(urgentOrder.price * 0.8).toLocaleString()} đ
-                </div>
-                <div className="text-danger fw-bold mt-3 fs-5">{urgentOrder.details}</div>
-              </div>
-            )}
-         </Modal.Body>
-         <Modal.Footer className="justify-content-center border-0 pb-4">
-           <Button variant="success" size="lg" className="glass-btn-primary fw-bold px-5 py-3 fs-4 shadow-lg" onClick={() => { stopAlertSound(); setShowUrgentPopup(false); handleAcceptOrder(urgentOrder?.id); }}>
-               🤝 NHẬN CUỐC NGAY
-           </Button>
-         </Modal.Footer>
-      </Modal>
-      <SupportWidget userInfo={userInfo} />
+              )}
+           </Modal.Body>
+           <Modal.Footer className="justify-content-center border-0 pb-5 pt-0">
+             <Button size="lg" className="btn-orange fw-bold px-5 py-3 fs-4 w-75" onClick={() => { stopAlertSound(); setShowUrgentPopup(false); handleAcceptOrder(urgentOrder?.id); }}>
+                 🤝 NHẬN CUỐC NGAY
+             </Button>
+           </Modal.Footer>
+        </Modal>
+        
+        <SupportWidget userInfo={userInfo} />
+      </Container>
     </Container>
   );
 }
