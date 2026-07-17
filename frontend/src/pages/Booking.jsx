@@ -31,7 +31,7 @@ export default function Booking() {
   const [pickupAddress, setPickupAddress] = useState('');
   const [dropoffAddress, setDropoffAddress] = useState('');
   
-  // [MỚI] STATE CHO THÔNG TIN NGƯỜI GỬI & NHẬN
+  // STATE CHO THÔNG TIN NGƯỜI GỬI & NHẬN
   const [senderName, setSenderName] = useState(userInfo?.name || '');
   const [senderPhone, setSenderPhone] = useState(userInfo?.phone || '');
   const [receiverName, setReceiverName] = useState('');
@@ -206,7 +206,6 @@ export default function Booking() {
         payment_method: paymentMethod, 
         cod_amount: hasCod ? (parseInt(codAmount) || 0) : 0,
         
-        // [MỚI] TRUYỀN DỮ LIỆU GỬI/NHẬN
         sender_name: senderName,
         sender_phone: senderPhone,
         receiver_name: receiverName,
@@ -242,7 +241,8 @@ export default function Booking() {
 
           <Row>
             <Col lg={4} className="mb-4">
-              <div className="p-3 bg-light rounded border h-100" style={{ maxHeight: '750px', overflowY: 'auto' }}>
+              {/* BAO BỌC TOÀN BỘ CỘT TRÁI VÀO TRONG FORM ĐỂ VALIDATION HOẠT ĐỘNG */}
+              <Form className="p-3 bg-light rounded border h-100" style={{ maxHeight: '750px', overflowY: 'auto' }} onSubmit={handleSubmit}>
                 <h5 className="text-primary mb-3">Tùy chọn dịch vụ</h5>
                 <Form.Select className="mb-4 fw-bold text-primary" value={serviceType} onChange={(e) => setServiceType(e.target.value)}>
                   <option value="express">🛵 Giao Hàng Nhanh (Xe máy)</option>
@@ -250,6 +250,7 @@ export default function Booking() {
                 </Form.Select>
                 <hr />
 
+                {/* 1. ĐỊA CHỈ GIAO NHẬN */}
                 <AddressSearchInput 
                   label="📍 Điểm lấy hàng" placeholder="Nhập địa chỉ..." 
                   value={pickupAddress} onChange={(val) => { setPickupAddress(val); setPickupCoords(null); }} 
@@ -288,8 +289,46 @@ export default function Booking() {
                   />
                 )}
 
+                {/* 2. THÔNG TIN LIÊN HỆ ĐƯỢC DỜI LÊN ĐÂY */}
+                <div className="mt-4 mb-4 p-3 bg-white border rounded shadow-sm">
+                  <h6 className="text-primary fw-bold mb-3">📍 Người Gửi (Lấy hàng)</h6>
+                  <Row className="mb-2">
+                    <Col md={6}>
+                      <Form.Group>
+                        <Form.Label className="fw-bold text-muted" style={{fontSize: '13px'}}>Tên người gửi</Form.Label>
+                        <Form.Control type="text" value={senderName} onChange={e => setSenderName(e.target.value)} required />
+                      </Form.Group>
+                    </Col>
+                    <Col md={6}>
+                      <Form.Group>
+                        <Form.Label className="fw-bold text-muted" style={{fontSize: '13px'}}>Số điện thoại</Form.Label>
+                        <Form.Control type="tel" value={senderPhone} onChange={e => setSenderPhone(e.target.value)} required />
+                      </Form.Group>
+                    </Col>
+                  </Row>
+                  
+                  <hr className="my-3 text-muted" />
+
+                  <h6 className="text-danger fw-bold mb-3">🚩 Người Nhận (Giao hàng)</h6>
+                  <Row>
+                    <Col md={6}>
+                      <Form.Group>
+                        <Form.Label className="fw-bold text-muted" style={{fontSize: '13px'}}>Tên người nhận</Form.Label>
+                        <Form.Control type="text" value={receiverName} onChange={e => setReceiverName(e.target.value)} required />
+                      </Form.Group>
+                    </Col>
+                    <Col md={6}>
+                      <Form.Group>
+                        <Form.Label className="fw-bold text-muted" style={{fontSize: '13px'}}>Số điện thoại</Form.Label>
+                        <Form.Control type="tel" value={receiverPhone} onChange={e => setReceiverPhone(e.target.value)} required />
+                      </Form.Group>
+                    </Col>
+                  </Row>
+                </div>
+
                 <hr />
                 
+                {/* 3. CÁC TÙY CHỌN & THANH TOÁN */}
                 <h6 className="fw-bold text-secondary mb-3">Dịch vụ bổ sung</h6>
                 {serviceType === 'express' && (
                   <Form.Check type="checkbox" id="bulky-check" className="mb-2" label={<>Hàng cồng kềnh (5-10kg) <span className="text-danger fw-bold">+20.000đ</span></>} checked={isBulky} onChange={(e) => setIsBulky(e.target.checked)} />
@@ -345,49 +384,16 @@ export default function Booking() {
                   {hasCod && parseInt(codAmount) > 0 && <div className="d-flex justify-content-between align-items-center mt-2 pt-2 border-top border-danger"><span className="fw-bold text-danger">Tiền thu hộ (COD):</span><span className="fs-5 fw-bold text-danger">{parseInt(codAmount).toLocaleString()} đ</span></div>}
                 </div>
 
-                <Form onSubmit={handleSubmit}>
-                  {/* [MỚI] GIAO DIỆN NHẬP NGƯỜI GỬI - NGƯỜI NHẬN */}
-                  <h5 className="text-primary mt-4 fw-bold">📍 Người Gửi (Lấy hàng)</h5>
-                  <Row className="mb-3">
-                    <Col md={6}>
-                      <Form.Group>
-                        <Form.Label className="fw-bold text-muted" style={{fontSize: '14px'}}>Tên người gửi</Form.Label>
-                        <Form.Control type="text" value={senderName} onChange={e => setSenderName(e.target.value)} required />
-                      </Form.Group>
-                    </Col>
-                    <Col md={6}>
-                      <Form.Group>
-                        <Form.Label className="fw-bold text-muted" style={{fontSize: '14px'}}>Số điện thoại</Form.Label>
-                        <Form.Control type="tel" value={senderPhone} onChange={e => setSenderPhone(e.target.value)} required />
-                      </Form.Group>
-                    </Col>
-                  </Row>
-
-                  <h5 className="text-danger mt-4 fw-bold">🚩 Người Nhận (Giao hàng)</h5>
-                  <Row className="mb-4">
-                    <Col md={6}>
-                      <Form.Group>
-                        <Form.Label className="fw-bold text-muted" style={{fontSize: '14px'}}>Tên người nhận</Form.Label>
-                        <Form.Control type="text" value={receiverName} onChange={e => setReceiverName(e.target.value)} required />
-                      </Form.Group>
-                    </Col>
-                    <Col md={6}>
-                      <Form.Group>
-                        <Form.Label className="fw-bold text-muted" style={{fontSize: '14px'}}>Số điện thoại</Form.Label>
-                        <Form.Control type="tel" value={receiverPhone} onChange={e => setReceiverPhone(e.target.value)} required />
-                      </Form.Group>
-                    </Col>
-                  </Row>
-
-                  <Form.Group className="mb-4">
-                    <Form.Control as="textarea" rows={2} placeholder="Chi tiết hàng hóa (VD: 2 ly trà sữa, 1 tài liệu)..." value={packageDetails} onChange={(e) => setPackageDetails(e.target.value)} required />
-                  </Form.Group>
-                  <Button variant="primary" type="submit" size="lg" className="w-100 mb-2 fw-bold" disabled={!pickupCoords || !dropoffCoords || isSubmitting}>
-                    {isSubmitting ? 'Đang xử lý...' : '🚀 XÁC NHẬN ĐẶT ĐƠN'}
-                  </Button>
-                  <Button variant="link" className="w-100 text-muted text-decoration-none" onClick={() => navigate('/dashboard')}>Hủy bỏ & Quay về</Button>
-                </Form>
-              </div>
+                {/* GHI CHÚ CUỐI CÙNG VÀ NÚT SUBMIT */}
+                <Form.Group className="mb-4">
+                  <Form.Control as="textarea" rows={2} placeholder="Ghi chú chi tiết hàng hóa (VD: 2 ly trà sữa, 1 tài liệu)..." value={packageDetails} onChange={(e) => setPackageDetails(e.target.value)} required />
+                </Form.Group>
+                
+                <Button variant="primary" type="submit" size="lg" className="w-100 mb-2 fw-bold" disabled={!pickupCoords || !dropoffCoords || isSubmitting}>
+                  {isSubmitting ? 'Đang xử lý...' : '🚀 XÁC NHẬN ĐẶT ĐƠN'}
+                </Button>
+                <Button variant="link" className="w-100 text-muted text-decoration-none" onClick={() => navigate('/dashboard')}>Hủy bỏ & Quay về</Button>
+              </Form>
             </Col>
             
             <Col lg={8}>
