@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Card, Button, Table, Alert, Badge, Row, Col, Modal, Form } from 'react-bootstrap';
+import { Container, Button, Alert, Badge, Modal, Form } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import DashboardSkeleton from '../../components/DashboardSkeleton';
@@ -28,7 +28,6 @@ export default function DriverDashboard({ userInfo }) {
 
   const fetchData = async () => {
     try {
-      // BÙA CHỐNG CACHE: Bắt trình duyệt luôn lấy dữ liệu mới
       const t = new Date().getTime();
       const resBalance = await axios.get(`https://datquang-backend.onrender.com/users/${userInfo.user_id}?t=${t}`);
       setUserBalance(resBalance.data.balance);
@@ -55,29 +54,20 @@ export default function DriverDashboard({ userInfo }) {
       ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
         if (data.event === 'user_banned') { localStorage.removeItem('userInfo'); navigate('/'); return; }
-        if (data.event === 'urgent_order_alert') {
-          // Lọc đúng xe mới cho kêu
-          if (data.target_role === userInfo.role) {
+        if (data.event === 'urgent_order_alert' && data.target_role === userInfo.role) {
              setUrgentOrder(data.order); 
              setShowUrgentPopup(true);
              const audio = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
              audio.loop = true; audio.play().catch(e=>e); setAudioInstance(audio); 
-          }
         }
         fetchData(); 
       };
-      ws.onclose = () => {
-        console.log("🔴 [Radar Tài xế] Mất sóng. Thử lại sau 3s...");
-        setTimeout(connectWebSocket, 3000);
-      };
+      ws.onclose = () => { setTimeout(connectWebSocket, 3000); };
     };
     connectWebSocket();
     return () => { if (ws) { ws.onclose = null; ws.close(); } };
   }, [userInfo.user_id, userInfo.role, isReady]);
 
-  // ===============================================
-  // BÙA HỘ MỆNH AUTO-POLLING (5 Giây làm mới 1 lần)
-  // ===============================================
   useEffect(() => {
     if (!isReady) return;
     const interval = setInterval(() => { fetchData(); }, 5000);
@@ -156,115 +146,145 @@ export default function DriverDashboard({ userInfo }) {
   }, {}));
 
   return (
-    <Container className="mt-5">
-      <Card className="shadow p-4 border-top border-success border-4 mb-5">
-        <h2 className="text-success mb-4">Trạm Điều Phối Đơn Hàng</h2>
+    <Container className="mt-5 mb-5" style={{ position: 'relative', zIndex: 1 }}>
+      
+      {/* HEADER THỦY TINH */}
+      <div className="glass-card p-4 mb-4 border-top border-success border-4">
         <div className="d-flex justify-content-between align-items-center flex-wrap">
           <div className="d-flex align-items-center mb-3 mb-md-0">
             {userInfo.avatar_url ? (
-              <img src={userInfo.avatar_url} alt="avatar" style={{width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover', marginRight: '15px', border: '2px solid #198754'}} />
-            ) : <div style={{width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#e9ecef', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '15px', fontSize: '24px'}}>🛵</div>}
+              <img src={userInfo.avatar_url} alt="avatar" style={{width: '70px', height: '70px', borderRadius: '50%', objectFit: 'cover', marginRight: '15px', border: '3px solid rgba(25, 135, 84, 0.5)'}} />
+            ) : <div style={{width: '70px', height: '70px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '15px', fontSize: '30px', backdropFilter: 'blur(5px)'}}>🛵</div>}
+            
             <div>
-              <h5 className="mb-1">Xin chào: <strong>{userInfo.name}</strong></h5>
+              <h4 className="mb-1 fw-bold text-dark">Xin chào, {userInfo.name}!</h4>
               <div className="d-flex align-items-center mt-2 flex-wrap gap-2">
-                <Badge bg={userInfo.role.startsWith('pending') ? "warning" : "info"} text="dark">
+                <Badge bg={userInfo.role.startsWith('pending') ? "warning" : "info"} text="dark" className="fs-6 shadow-sm">
                   {userInfo.role === 'driver_express' ? 'TÀI XẾ XE MÁY' : 'TÀI XẾ CONTAINER'}
                 </Badge>
-                <Button variant="success" size="sm" className="fw-bold px-3 rounded-pill shadow-sm" onClick={() => navigate('/wallet')}>💰 Ví: {userBalance.toLocaleString()} đ</Button>
-                <div className="bg-white rounded-pill px-3 py-1 shadow-sm border border-2 d-flex align-items-center" style={{borderColor: isReady ? '#198754' : '#dc3545'}}>
-                  <Form.Check type="switch" id="driver-ready-switch" label={isReady ? "🟢 Đang nhận đơn" : "🔴 Đang nghỉ ngơi"} checked={isReady} onChange={handleToggleReady} className={`fw-bold mb-0 ${isReady ? 'text-success' : 'text-danger'}`} />
+                <Button variant="success" size="sm" className="glass-btn-primary px-3 shadow-sm" onClick={() => navigate('/wallet')}>💰 Ví: {userBalance.toLocaleString()} đ</Button>
+                <div className="glass-card px-3 py-1 shadow-sm d-flex align-items-center" style={{ borderLeft: isReady ? '4px solid #198754' : '4px solid #dc3545' }}>
+                  <Form.Check type="switch" id="driver-ready-switch" label={isReady ? "🟢 Đang nhận đơn" : "🔴 Nghỉ ngơi"} checked={isReady} onChange={handleToggleReady} className={`fw-bold mb-0 ${isReady ? 'text-success' : 'text-danger'}`} />
                 </div>
               </div>
             </div>
           </div>
-          <div>
-            <Button variant="outline-primary" className="me-2" onClick={() => setShowProfileModal(true)}>✏️ Hồ sơ</Button>
-            <Button variant="outline-danger" onClick={handleLogout}>Đăng xuất</Button>
+          <div className="d-flex gap-2">
+            <Button variant="outline-dark" className="glass-btn" onClick={() => setShowProfileModal(true)}>✏️ Hồ sơ</Button>
+            <Button variant="outline-danger" className="glass-btn text-danger fw-bold border-danger" onClick={handleLogout}>Đăng xuất</Button>
           </div>
         </div>
-        <hr />
+      </div>
 
-        {!isReady && (
-          <Alert variant="danger" className="text-center shadow-sm fw-bold border-danger border-2 mt-3 p-3">
-            <h4 className="mb-2">😴 BẠN ĐANG TRONG TRẠNG THÁI NGHỈ NGƠI!</h4>
-            <span>Hệ thống phân đơn Radar đã bị vô hiệu hóa. Bạn sẽ không nhận được đơn hàng mới nào.</span>
-          </Alert>
+      {!isReady && (
+        <Alert variant="danger" className="glass-card text-center shadow-sm fw-bold border-danger border-start border-4 mt-3 p-3">
+          <h4 className="mb-2 text-danger">😴 BẠN ĐANG TRONG TRẠNG THÁI NGHỈ NGƠI!</h4>
+          <span className="text-dark">Hệ thống phân đơn Radar đã bị vô hiệu hóa. Bạn sẽ không nhận được đơn hàng mới nào.</span>
+        </Alert>
+      )}
+      
+      {actionMessage && <Alert variant={actionMessage.includes('❌') ? 'danger' : 'success'} className="glass-card fw-bold">{actionMessage}</Alert>}
+      
+      <div className="mt-4">
+        <h4 className="fw-bold text-dark mb-3" style={{ textShadow: '0 2px 4px rgba(255,255,255,0.8)' }}>📡 Radar: Đơn hàng quanh đây</h4>
+        
+        {!isReady ? (
+          <div className="glass-card p-5 text-center shadow-sm border-danger border-2" style={{ borderStyle: 'dashed !important' }}>
+            <div className="fs-1 mb-2">📡 ❌</div>
+            <h5 className="text-danger fw-bold">Radar đã bị ngắt kết nối</h5>
+          </div>
+        ) : groupedPendingOrders.length === 0 ? (
+          <div className="glass-card p-4 text-center text-muted fw-bold">Không có đơn nào mới quanh bạn.</div>
+        ) : (
+          <div className="d-flex flex-column gap-3">
+            {groupedPendingOrders.map((order, idx) => (
+              <div key={idx} className="glass-card p-4 border-start border-4 border-warning shadow-sm transition-hover">
+                <div className="d-flex justify-content-between align-items-center flex-wrap">
+                  <div className="mb-3 mb-md-0">
+                    <h5 className="fw-bold mb-2">
+                      {order.is_batch ? <Badge bg="danger" className="fs-6 shadow-sm">📦 GHÉP BATCH</Badge> : <span className="text-primary">Đơn #{order.id}</span>}
+                    </h5>
+                    <div className="text-dark fs-6" style={{ maxWidth: '600px' }}>
+                      {order.is_batch ? (
+                        <span className="fw-bold text-danger">📍 Lộ trình ghép (Nhiều điểm Lấy / Giao)</span>
+                      ) : (
+                        <>
+                          <div className="mb-1"><strong>📍 Lấy:</strong> {order.pickup_location}</div>
+                          <div><strong>🚩 Giao:</strong> {order.dropoff_location}</div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-end">
+                    <h3 className="text-success fw-bold mb-3" style={{ textShadow: '1px 1px 2px rgba(255,255,255,0.8)' }}>{order.total_price.toLocaleString()} đ</h3>
+                    <div className="d-flex gap-2 justify-content-end">
+                        <Button variant="outline-primary" className="glass-btn px-4" onClick={() => navigate(`/order/${order.ids[0]}`)}>👁️ Xem</Button>
+                        <Button variant="success" className="glass-btn-primary px-4" onClick={() => handleAcceptOrder(order.ids[0])}>🤝 Nhận Cuốc</Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
-        
-        {actionMessage && <Alert variant={actionMessage.includes('❌') ? 'danger' : 'success'}>{actionMessage}</Alert>}
-        
-        <div className="mt-3">
-          <h4 className="text-warning">Radar: Đơn hàng quanh đây</h4>
-          {!isReady ? (
-            <div className="bg-light p-4 text-center rounded shadow-sm border border-danger border-2" style={{ borderStyle: 'dashed !important' }}>
-              <div className="fs-1 mb-2">📡 ❌</div>
-              <h5 className="text-danger fw-bold">Radar đã bị ngắt kết nối</h5>
-            </div>
-          ) : groupedPendingOrders.length === 0 ? (
-            <p className="text-muted">Không có đơn nào mới.</p>
-          ) : (
-            <Table striped bordered hover responsive>
-              <thead className="table-dark"><tr><th>Chuyến</th><th>Lộ trình</th><th>Giá trị</th><th>Thao Tác</th></tr></thead>
-              <tbody>
-                {groupedPendingOrders.map((order, idx) => (
-                  <tr key={idx}>
-                    <td>{order.is_batch ? <Badge bg="danger">📦 GHÉP BATCH</Badge> : `#${order.id}`}</td>
-                    <td>{order.is_batch ? <span className="fw-bold text-danger">📍 Lộ trình ghép (Nhiều điểm Lấy/Giao)</span> : `${order.pickup_location} → ${order.dropoff_location}`}</td>
-                    <td className="text-success fw-bold">{order.total_price.toLocaleString()} đ</td>
-                    <td>
-                      <Button variant="info" size="sm" className="me-2 text-white" onClick={() => navigate(`/order/${order.ids[0]}`)}>👁️ Xem</Button>
-                      <Button variant="success" size="sm" onClick={() => handleAcceptOrder(order.ids[0])}>Nhận cuốc</Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          )}
 
-          <h4 className="text-info mt-5">Cuốc xe của tôi</h4>
-          {groupedMyOrders.length === 0 ? <p className="text-muted">Bạn chưa nhận cuốc nào.</p> : (
-            <Table striped bordered hover responsive>
-              <thead className="table-light"><tr><th>Chuyến</th><th>Trạng thái hiện tại</th><th>Thao tác</th></tr></thead>
-              <tbody>
-                {groupedMyOrders.map((order, idx) => (
-                  <tr key={idx}>
-                    <td>{order.is_batch ? <Badge bg="danger" className="fs-6">📦 CHUYẾN GHÉP ({order.ids.length} ĐƠN)</Badge> : <strong className="fs-6">Đơn #{order.id}</strong>}</td>
-                    <td>{getStatusBadge(order.status)}</td>
-                    <td><Button variant="primary" size="sm" className="fw-bold shadow-sm" onClick={() => navigate(`/order/${order.ids[0]}`)}>🧭 Mở Lộ Trình</Button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          )}
-        </div>
-      </Card>
+        <h4 className="fw-bold text-dark mt-5 mb-3" style={{ textShadow: '0 2px 4px rgba(255,255,255,0.8)' }}>🏍️ Cuốc xe của tôi</h4>
+        {groupedMyOrders.length === 0 ? (
+          <div className="glass-card p-4 text-center text-muted fw-bold">Bạn chưa nhận cuốc nào.</div>
+        ) : (
+          <div className="d-flex flex-column gap-3">
+            {groupedMyOrders.map((order, idx) => (
+              <div key={idx} className="glass-card p-3 border-start border-4 border-info shadow-sm d-flex justify-content-between align-items-center flex-wrap">
+                <div className="mb-2 mb-md-0">
+                  <h5 className="fw-bold mb-2">
+                    {order.is_batch ? <Badge bg="danger" className="shadow-sm">📦 CHUYẾN GHÉP ({order.ids.length} ĐƠN)</Badge> : <span className="text-dark">Đơn #{order.id}</span>}
+                  </h5>
+                  <div>{getStatusBadge(order.status)}</div>
+                </div>
+                <Button variant="info" className="glass-btn text-primary border-info fw-bold px-4" onClick={() => navigate(`/order/${order.ids[0]}`)}>🧭 Mở Lộ Trình</Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
-      <Modal show={showProfileModal} onHide={() => setShowProfileModal(false)} centered>
-        <Modal.Header closeButton className="bg-success text-white"><Modal.Title>Hồ Sơ Cá Nhân</Modal.Title></Modal.Header>
+      <Modal show={showProfileModal} onHide={() => setShowProfileModal(false)} centered contentClassName="glass-card border-0">
+        <Modal.Header closeButton className="border-bottom border-light">
+            <Modal.Title className="fw-bold text-dark">Hồ Sơ Cá Nhân</Modal.Title>
+        </Modal.Header>
         <Form onSubmit={handleUpdateProfile}>
           <Modal.Body>
-            <Form.Group className="mb-3"><Form.Label>Họ và Tên</Form.Label><Form.Control type="text" value={profileForm.name} onChange={(e) => setProfileForm({...profileForm, name: e.target.value})} required /></Form.Group>
-            <Form.Group className="mb-3"><Form.Label>Số điện thoại</Form.Label><Form.Control type="tel" value={profileForm.phone} onChange={(e) => setProfileForm({...profileForm, phone: e.target.value})} /></Form.Group>
-            <Form.Group className="mb-3"><Form.Label>Biển số</Form.Label><Form.Control type="text" value={profileForm.license_plate} onChange={(e) => setProfileForm({...profileForm, license_plate: e.target.value})} required /></Form.Group>
-            <Form.Group className="mb-3"><Form.Label>Ảnh đại diện (Tải từ máy)</Form.Label><Form.Control type="file" accept="image/*" onChange={(e) => setAvatarFile(e.target.files[0])} /></Form.Group>
+            <Form.Group className="mb-3"><Form.Label className="fw-bold">Họ và Tên</Form.Label><Form.Control type="text" className="glass-input" value={profileForm.name} onChange={(e) => setProfileForm({...profileForm, name: e.target.value})} required /></Form.Group>
+            <Form.Group className="mb-3"><Form.Label className="fw-bold">Số điện thoại</Form.Label><Form.Control type="tel" className="glass-input" value={profileForm.phone} onChange={(e) => setProfileForm({...profileForm, phone: e.target.value})} /></Form.Group>
+            <Form.Group className="mb-3"><Form.Label className="fw-bold">Biển số</Form.Label><Form.Control type="text" className="glass-input" value={profileForm.license_plate} onChange={(e) => setProfileForm({...profileForm, license_plate: e.target.value})} required /></Form.Group>
+            <Form.Group className="mb-3"><Form.Label className="fw-bold">Ảnh đại diện</Form.Label><Form.Control type="file" className="glass-input" accept="image/*" onChange={(e) => setAvatarFile(e.target.files[0])} /></Form.Group>
           </Modal.Body>
-          <Modal.Footer><Button variant="secondary" onClick={() => setShowProfileModal(false)}>Hủy</Button><Button variant="success" type="submit">Lưu</Button></Modal.Footer>
+          <Modal.Footer className="border-top border-light">
+              <Button variant="secondary" className="glass-btn" onClick={() => setShowProfileModal(false)}>Hủy</Button>
+              <Button variant="success" type="submit" className="glass-btn-primary">Lưu thay đổi</Button>
+          </Modal.Footer>
         </Form>
       </Modal>
 
-      <Modal show={showUrgentPopup} onHide={() => {}} backdrop="static" centered size="lg">
-         <Modal.Header className="bg-danger text-white text-center d-block"><Modal.Title>🚨 HỆ THỐNG PHÂN ĐƠN! 🚨</Modal.Title></Modal.Header>
-         <Modal.Body className="p-4 text-center">
+      <Modal show={showUrgentPopup} onHide={() => {}} backdrop="static" centered size="lg" contentClassName="glass-card border-danger border-4">
+         <Modal.Header className="bg-danger text-white text-center d-block border-0 rounded-top" style={{ opacity: 0.9 }}>
+             <Modal.Title className="fw-bold fs-3">🚨 HỆ THỐNG PHÂN ĐƠN! 🚨</Modal.Title>
+         </Modal.Header>
+         <Modal.Body className="p-5 text-center">
             {urgentOrder && (
-              <div className="bg-light p-4 rounded border text-start fs-5">
-                <p>📍 {urgentOrder.pickup} &rarr; 🚩 {urgentOrder.dropoff}</p>
-                <div className="text-success fw-bold fs-2">{(urgentOrder.price * 0.8).toLocaleString()} đ</div>
-                <div className="text-muted mt-2">{urgentOrder.details}</div>
+              <div>
+                <p className="fs-4 text-dark fw-bold mb-4">📍 {urgentOrder.pickup} <br/><br/>⬇️<br/><br/>🚩 {urgentOrder.dropoff}</p>
+                <div className="text-success fw-bold" style={{ fontSize: '3rem', textShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+                    {(urgentOrder.price * 0.8).toLocaleString()} đ
+                </div>
+                <div className="text-danger fw-bold mt-3 fs-5">{urgentOrder.details}</div>
               </div>
             )}
          </Modal.Body>
-         <Modal.Footer className="justify-content-center">
-           <Button variant="success" size="lg" onClick={() => { stopAlertSound(); setShowUrgentPopup(false); handleAcceptOrder(urgentOrder?.id); }}>🤝 NHẬN CUỐC</Button>
+         <Modal.Footer className="justify-content-center border-0 pb-4">
+           <Button variant="success" size="lg" className="glass-btn-primary fw-bold px-5 py-3 fs-4 shadow-lg" onClick={() => { stopAlertSound(); setShowUrgentPopup(false); handleAcceptOrder(urgentOrder?.id); }}>
+               🤝 NHẬN CUỐC NGAY
+           </Button>
          </Modal.Footer>
       </Modal>
       <SupportWidget userInfo={userInfo} />

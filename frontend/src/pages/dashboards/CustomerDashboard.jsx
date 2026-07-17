@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Card, Button, Table, Badge, Modal, Form, Alert } from 'react-bootstrap';
+import { Container, Button, Badge, Modal, Form, Alert, Row, Col } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import DashboardSkeleton from '../../components/DashboardSkeleton';
@@ -17,7 +17,6 @@ export default function CustomerDashboard({ userInfo }) {
 
   const fetchMyOrders = async () => {
     try {
-      // BÙA CHỐNG CACHE TRÌNH DUYỆT
       const t = new Date().getTime();
       const response = await axios.get(`https://datquang-backend.onrender.com/users/${userInfo.user_id}/orders/customer?t=${t}`);
       setMyOrders(response.data);
@@ -44,7 +43,6 @@ export default function CustomerDashboard({ userInfo }) {
     return () => { if (ws) { ws.onclose = null; ws.close(); } };
   }, [userInfo.user_id, userInfo.role]);
 
-  // BÙA AUTO-POLLING LÀM MỚI LIÊN TỤC
   useEffect(() => {
     const interval = setInterval(() => fetchMyOrders(), 5000);
     return () => clearInterval(interval);
@@ -69,71 +67,98 @@ export default function CustomerDashboard({ userInfo }) {
 
   const getStatusBadge = (status) => {
     switch(status) {
-      case 'pending': return <Badge bg="secondary">Đang tìm tài xế</Badge>;
-      case 'accepted': return <Badge bg="info">Tài xế đang đến</Badge>;
-      case 'picking_up': return <Badge bg="warning" text="dark">Đã lấy hàng</Badge>;
-      case 'delivering': return <Badge bg="primary">Đang giao hàng</Badge>;
-      case 'completed': return <Badge bg="success">Đã hoàn thành</Badge>;
-      case 'cancel_requested': return <Badge bg="danger">Yêu cầu hủy</Badge>;
-      case 'cancelled': return <Badge bg="dark">Đã hủy</Badge>;
-      default: return <Badge bg="light" text="dark">{status}</Badge>;
+      case 'pending': return <Badge bg="secondary" className="shadow-sm p-2">Đang tìm tài xế</Badge>;
+      case 'accepted': return <Badge bg="info" className="shadow-sm p-2">Tài xế đang đến</Badge>;
+      case 'picking_up': return <Badge bg="warning" text="dark" className="shadow-sm p-2">Đã lấy hàng</Badge>;
+      case 'delivering': return <Badge bg="primary" className="shadow-sm p-2">Đang giao hàng</Badge>;
+      case 'completed': return <Badge bg="success" className="shadow-sm p-2">Đã hoàn thành</Badge>;
+      case 'cancel_requested': return <Badge bg="danger" className="shadow-sm p-2">Yêu cầu hủy</Badge>;
+      case 'cancelled': return <Badge bg="dark" className="shadow-sm p-2">Đã hủy</Badge>;
+      default: return <Badge bg="light" text="dark" className="shadow-sm p-2">{status}</Badge>;
     }
   };
 
   if (loading) return <DashboardSkeleton />;
 
   return (
-    <Container className="mt-5" style={{ maxWidth: '800px' }}>
-      <Card className="shadow p-4 border-top border-primary border-4 mb-5">
-        <h2 className="text-primary mb-4">Trạm Đặt Hàng</h2>
+    <Container className="mt-5 mb-5" style={{ maxWidth: '900px', position: 'relative', zIndex: 1 }}>
+      
+      {/* HEADER THỦY TINH */}
+      <div className="glass-card p-4 mb-4 border-top border-primary border-4">
         <div className="d-flex justify-content-between align-items-center flex-wrap">
-          <div className="d-flex align-items-center mb-3">
+          <div className="d-flex align-items-center mb-3 mb-md-0">
             {userInfo.avatar_url ? (
-              <img src={userInfo.avatar_url} alt="avt" style={{width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover', marginRight: '15px'}} />
-            ) : <div style={{width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#e9ecef', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '15px', fontSize: '24px'}}>👤</div>}
+              <img src={userInfo.avatar_url} alt="avt" style={{width: '70px', height: '70px', borderRadius: '50%', objectFit: 'cover', marginRight: '15px', border: '3px solid rgba(13, 110, 253, 0.5)'}} />
+            ) : <div style={{width: '70px', height: '70px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '15px', fontSize: '30px', backdropFilter: 'blur(5px)'}}>👤</div>}
             <div>
-              <h5 className="mb-1">Xin chào: <strong>{userInfo.name}</strong></h5>
-              <Badge bg="primary">KHÁCH HÀNG</Badge>
+              <h4 className="mb-1 fw-bold text-dark">Xin chào, {userInfo.name}!</h4>
+              <Badge bg="primary" className="fs-6 shadow-sm">KHÁCH HÀNG</Badge>
             </div>
           </div>
-          <div>
-            <Button variant="outline-primary" className="me-2" onClick={() => setShowProfileModal(true)}>✏️ Hồ sơ</Button>
-            <Button variant="outline-danger" onClick={handleLogout}>Đăng xuất</Button>
+          <div className="d-flex gap-2">
+            <Button variant="outline-primary" className="glass-btn" onClick={() => setShowProfileModal(true)}>✏️ Hồ sơ</Button>
+            <Button variant="outline-danger" className="glass-btn text-danger fw-bold border-danger" onClick={handleLogout}>Đăng xuất</Button>
           </div>
         </div>
-        <hr />
+      </div>
         
-        {actionMessage && <Alert variant={actionMessage.includes('❌') ? 'danger' : 'success'}>{actionMessage}</Alert>}
+      {actionMessage && <Alert variant={actionMessage.includes('❌') ? 'danger' : 'success'} className="glass-card fw-bold">{actionMessage}</Alert>}
         
-        <div className="mt-3">
-          <Button variant="primary" size="lg" className="w-100 fw-bold mb-4 shadow-sm" onClick={() => navigate('/booking')}>+ ĐẶT ĐƠN HÀNG MỚI</Button>
-          <h5 className="text-info fw-bold mb-3">Lịch sử đơn hàng của tôi</h5>
-          <Table striped bordered hover responsive className="shadow-sm">
-            <thead className="table-light"><tr><th>Mã Đơn</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
-            <tbody>
-              {myOrders.length === 0 ? <tr><td colSpan="3" className="text-center text-muted">Chưa có đơn hàng nào.</td></tr> : myOrders.map(order => (
-                <tr key={order.id}>
-                  <td><strong>#{order.id}</strong></td>
-                  <td>{getStatusBadge(order.status)}</td>
-                  <td><Button size="sm" variant="info" className="text-white" onClick={() => navigate(`/order/${order.id}`)}>👁️ Xem chi tiết</Button></td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        </div>
-      </Card>
+      <div>
+        {/* NÚT ĐẶT ĐƠN KHỔNG LỒ */}
+        <Button 
+            size="lg" 
+            className="glass-btn-primary w-100 fw-bold mb-5 shadow-lg d-flex justify-content-center align-items-center gap-2" 
+            style={{ height: '70px', fontSize: '1.2rem', borderRadius: '20px' }}
+            onClick={() => navigate('/booking')}
+        >
+            <span className="fs-3">+</span> ĐẶT ĐƠN HÀNG MỚI
+        </Button>
 
-      <Modal show={showProfileModal} onHide={() => setShowProfileModal(false)} centered>
-        <Modal.Header closeButton className="bg-primary text-white"><Modal.Title>Hồ Sơ Cá Nhân</Modal.Title></Modal.Header>
+        <h4 className="fw-bold text-dark mb-4" style={{ textShadow: '0 2px 4px rgba(255,255,255,0.8)' }}>Lịch sử đơn hàng của tôi</h4>
+        
+        {myOrders.length === 0 ? (
+            <div className="glass-card p-5 text-center text-muted fw-bold border-dashed fs-5">
+                Chưa có đơn hàng nào. Hãy đặt ngay một cuốc xe nhé!
+            </div>
+        ) : (
+            <div className="d-flex flex-column gap-3">
+              {myOrders.map(order => (
+                <div key={order.id} className="glass-card p-4 border-start border-4 border-primary shadow-sm d-flex justify-content-between align-items-center flex-wrap">
+                  <div className="mb-3 mb-md-0">
+                    <h5 className="fw-bold text-dark mb-2">Mã Đơn: <span className="text-primary">#{order.id}</span></h5>
+                    <div className="d-flex align-items-center gap-2">
+                        <span className="text-muted fw-bold">Trạng thái: </span>
+                        {getStatusBadge(order.status)}
+                    </div>
+                  </div>
+                  <Button variant="outline-primary" className="glass-btn fw-bold px-4 py-2" onClick={() => navigate(`/order/${order.id}`)}>
+                      👁️ Xem chi tiết đơn
+                  </Button>
+                </div>
+              ))}
+            </div>
+        )}
+      </div>
+
+      {/* MODAL CẬP NHẬT HỒ SƠ */}
+      <Modal show={showProfileModal} onHide={() => setShowProfileModal(false)} centered contentClassName="glass-card border-0">
+        <Modal.Header closeButton className="border-bottom border-light">
+            <Modal.Title className="fw-bold text-dark">Hồ Sơ Cá Nhân</Modal.Title>
+        </Modal.Header>
         <Form onSubmit={handleUpdateProfile}>
           <Modal.Body>
-            <Form.Group className="mb-3"><Form.Label>Họ và Tên</Form.Label><Form.Control type="text" value={profileForm.name} onChange={(e) => setProfileForm({...profileForm, name: e.target.value})} required /></Form.Group>
-            <Form.Group className="mb-3"><Form.Label>Số điện thoại</Form.Label><Form.Control type="tel" value={profileForm.phone} onChange={(e) => setProfileForm({...profileForm, phone: e.target.value})} /></Form.Group>
-            <Form.Group className="mb-3"><Form.Label>Ảnh đại diện (Tải từ máy)</Form.Label><Form.Control type="file" accept="image/*" onChange={(e) => setAvatarFile(e.target.files[0])} /></Form.Group>
+            <Form.Group className="mb-3"><Form.Label className="fw-bold">Họ và Tên</Form.Label><Form.Control type="text" className="glass-input" value={profileForm.name} onChange={(e) => setProfileForm({...profileForm, name: e.target.value})} required /></Form.Group>
+            <Form.Group className="mb-3"><Form.Label className="fw-bold">Số điện thoại</Form.Label><Form.Control type="tel" className="glass-input" value={profileForm.phone} onChange={(e) => setProfileForm({...profileForm, phone: e.target.value})} /></Form.Group>
+            <Form.Group className="mb-3"><Form.Label className="fw-bold">Ảnh đại diện (Tải từ máy)</Form.Label><Form.Control type="file" className="glass-input" accept="image/*" onChange={(e) => setAvatarFile(e.target.files[0])} /></Form.Group>
           </Modal.Body>
-          <Modal.Footer><Button variant="secondary" onClick={() => setShowProfileModal(false)}>Hủy</Button><Button variant="success" type="submit">Lưu</Button></Modal.Footer>
+          <Modal.Footer className="border-top border-light">
+              <Button variant="secondary" className="glass-btn" onClick={() => setShowProfileModal(false)}>Hủy</Button>
+              <Button variant="primary" type="submit" className="glass-btn-primary">Lưu thay đổi</Button>
+          </Modal.Footer>
         </Form>
       </Modal>
+
       <SupportWidget userInfo={userInfo} />
     </Container>
   );
