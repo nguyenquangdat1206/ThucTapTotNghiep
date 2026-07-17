@@ -30,6 +30,9 @@ export default function OrderDetail() {
   const userInfoString = localStorage.getItem('userInfo');
   const userInfo = userInfoString ? JSON.parse(userInfoString) : null;
 
+  // [MỚI] KIỂM TRA XEM CÓ PHẢI ADMIN ĐANG "SOI" ĐƠN HAY KHÔNG
+  const isAdmin = userInfo?.role === 'admin';
+
   const [orderDetails, setOrderDetails] = useState(null);
   const [batchOrders, setBatchOrders] = useState([]); 
   const [loading, setLoading] = useState(true);
@@ -242,7 +245,7 @@ export default function OrderDetail() {
       {/* HEADER */}
       <div className="glass-card p-3 mb-4 d-flex justify-content-between align-items-center border-top border-primary border-4 shadow-sm">
         <h3 className="text-primary fw-bold mb-0">🏷️ {batchOrders.length > 0 ? "Lộ Trình Vận Hành (Đơn Ghép)" : `Chi tiết đơn hàng #${orderDetails.order.id}`}</h3>
-        <Button variant="link" className="glass-btn text-dark fw-bold text-decoration-none px-4" onClick={() => navigate('/dashboard')}>⬅ Quay lại Radar</Button>
+        <Button variant="link" className="glass-btn text-dark fw-bold text-decoration-none px-4" onClick={() => navigate(isAdmin ? '/admin' : '/dashboard')}>⬅ Quay lại</Button>
       </div>
 
       {isDriverOwner && orderDetails.order.batch_id && !isBatchClosed && (
@@ -257,10 +260,40 @@ export default function OrderDetail() {
         <div className="d-flex justify-content-between align-items-center position-relative mx-auto" style={{ maxWidth: '800px' }}>
             <div style={{ position: 'absolute', top: '50%', left: '10%', right: '10%', height: '4px', background: 'rgba(0,0,0,0.1)', zIndex: 0 }}></div>
             
-            <Badge bg={orderDetails.order.status !== 'pending' ? "success" : "warning"} className="p-3 rounded-circle shadow position-relative z-index-1" style={{ width: '50px', height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>1</Badge>
-            <Badge bg={['arrived_pickup', 'picking_up', 'delivering', 'completed'].includes(orderDetails.order.status) ? "success" : "light"} text={['arrived_pickup', 'picking_up', 'delivering', 'completed'].includes(orderDetails.order.status) ? "white" : "dark"} className="p-3 rounded-circle shadow position-relative z-index-1" style={{ width: '50px', height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>2</Badge>
-            <Badge bg={['delivering', 'completed'].includes(orderDetails.order.status) ? "primary" : "light"} text={['delivering', 'completed'].includes(orderDetails.order.status) ? "white" : "dark"} className="p-3 rounded-circle shadow position-relative z-index-1" style={{ width: '50px', height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>3</Badge>
-            <Badge bg={orderDetails.order.status === 'completed' ? "success" : "light"} text={orderDetails.order.status === 'completed' ? "white" : "dark"} className="p-3 rounded-circle shadow position-relative z-index-1" style={{ width: '50px', height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>4</Badge>
+            {/* BƯỚC 1: ĐANG XỬ LÝ */}
+            <Badge 
+              bg={['arrived_pickup', 'picking_up', 'delivering', 'completed'].includes(orderDetails.order.status) ? "success" : "primary"} 
+              className="p-3 rounded-circle shadow position-relative z-index-1" 
+              style={{ width: '50px', height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>
+              1
+            </Badge>
+
+            {/* BƯỚC 2: ĐÃ LẤY HÀNG */}
+            <Badge 
+              bg={['delivering', 'completed'].includes(orderDetails.order.status) ? "success" : ['arrived_pickup', 'picking_up'].includes(orderDetails.order.status) ? "primary" : "light"} 
+              text={['arrived_pickup', 'picking_up', 'delivering', 'completed'].includes(orderDetails.order.status) ? "white" : "dark"} 
+              className="p-3 rounded-circle shadow position-relative z-index-1" 
+              style={{ width: '50px', height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>
+              2
+            </Badge>
+
+            {/* BƯỚC 3: ĐANG GIAO HÀNG */}
+            <Badge 
+              bg={orderDetails.order.status === 'completed' ? "success" : orderDetails.order.status === 'delivering' ? "primary" : "light"} 
+              text={['delivering', 'completed'].includes(orderDetails.order.status) ? "white" : "dark"} 
+              className="p-3 rounded-circle shadow position-relative z-index-1" 
+              style={{ width: '50px', height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>
+              3
+            </Badge>
+
+            {/* BƯỚC 4: HOÀN THÀNH */}
+            <Badge 
+              bg={orderDetails.order.status === 'completed' ? "success" : "light"} 
+              text={orderDetails.order.status === 'completed' ? "white" : "dark"} 
+              className="p-3 rounded-circle shadow position-relative z-index-1" 
+              style={{ width: '50px', height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>
+              4
+            </Badge>
         </div>
         <div className="d-flex justify-content-between mx-auto mt-2 text-dark fw-bold" style={{ maxWidth: '840px', fontSize: '12px' }}>
             <span style={{ width: '80px' }}>Đang xử lý</span>
@@ -270,11 +303,11 @@ export default function OrderDetail() {
         </div>
       </div>
 
-      <Row>
-        {/* ======================================= */}
-        {/* CỘT TRÁI: THÔNG TIN VẬN ĐƠN */}
-        {/* ======================================= */}
-        <Col lg={7} className="mb-4">
+      <Row className="justify-content-center">
+        {/* ========================================================================= */}
+        {/* CỘT TRÁI: THÔNG TIN VẬN ĐƠN (NẾU LÀ ADMIN, CỘT NÀY SẼ CĂN GIỮA VÀ TO RA) */}
+        {/* ========================================================================= */}
+        <Col lg={isAdmin ? 8 : 7} className="mb-4">
           <div className="glass-card p-4 h-100 shadow-sm">
             <h5 className="fw-bold text-dark border-bottom border-secondary pb-2 mb-4">📦 Lộ Trình Công Việc</h5>
             
@@ -369,6 +402,35 @@ export default function OrderDetail() {
 
           <OrderContactInfo renderOrders={renderOrders} orderDetails={orderDetails} shouldHideInfo={shouldHideInfo} batchOrders={batchOrders} />
 
+          {/* ========================================================================= */}
+          {/* [MỚI] NHẬT KÝ CHAT (CHỈ HIỂN THỊ ĐỐI VỚI ADMIN) ĐỂ THEO DÕI TRANH CHẤP */}
+          {/* ========================================================================= */}
+          {isAdmin && (
+            <div className="glass-card p-4 shadow-sm mt-4 mb-4 border-info border-start border-4">
+                <h5 className="fw-bold text-info border-bottom border-secondary pb-2 mb-3">💬 Nhật ký Chat (Khách ↔ Tài xế)</h5>
+                {messages.length === 0 ? (
+                  <div className="text-muted fst-italic">Không có cuộc trò chuyện nào được ghi nhận.</div>
+                ) : (
+                  <div style={{ maxHeight: '350px', overflowY: 'auto' }} className="pe-2">
+                    {messages.map(msg => {
+                      const isSystem = msg.content.includes("HỆ THỐNG:");
+                      if (isSystem) return <div key={msg.id} className="text-center my-2"><Badge bg="danger" className="text-wrap shadow-sm">{msg.content}</Badge></div>;
+                      
+                      const isDriver = msg.sender_id === orderDetails?.order?.driver_id;
+                      return (
+                        <div key={msg.id} className="mb-2 bg-white bg-opacity-25 p-3 rounded-3 border border-secondary shadow-sm">
+                          <strong className={isDriver ? 'text-success' : 'text-primary'}>
+                            {isDriver ? '🛵 Tài xế' : '👤 Khách hàng'}:
+                          </strong> <span className="text-dark fw-bold ms-2">{msg.content}</span>
+                          <div className="text-muted mt-1" style={{fontSize: '11px'}}>{new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+            </div>
+          )}
+
           {orderDetails.order.rating && (
             <div className="glass-card p-4 shadow-sm mt-4 mb-4 border-warning border-start border-4">
                 <h5 className="text-warning fw-bold mb-2">⭐ Đánh giá từ khách hàng:</h5>
@@ -390,15 +452,16 @@ export default function OrderDetail() {
           )}
         </Col>
 
-        {/* ======================================= */}
-        {/* CỘT PHẢI: KHUNG CHAT                      */}
-        {/* ======================================= */}
-        <Col lg={5}>
-          <OrderChatBox orderId={id} userInfo={userInfo} isChatDisabled={isChatDisabled} isBatchClosed={isBatchClosed} messages={messages} fetchMessages={fetchMessages} />
-        </Col>
+        {/* ========================================================================= */}
+        {/* CỘT PHẢI: KHUNG CHAT SẼ TỰ ĐỘNG BIẾN MẤT NẾU NGƯỜI XEM LÀ ADMIN        */}
+        {/* ========================================================================= */}
+        {!isAdmin && (
+          <Col lg={5}>
+            <OrderChatBox orderId={id} userInfo={userInfo} isChatDisabled={isChatDisabled} isBatchClosed={isBatchClosed} messages={messages} fetchMessages={fetchMessages} />
+          </Col>
+        )}
       </Row>
 
-      {/* MODAL ĐÁNH GIÁ VÀ HÌNH ẢNH */}
       <Modal show={showReviewModal} onHide={() => setShowReviewModal(false)} centered contentClassName="glass-card border-0">
         <Modal.Header closeButton className="bg-success text-white border-0"><Modal.Title className="fw-bold">🎉 Chuyến đi hoàn tất!</Modal.Title></Modal.Header>
         <Form onSubmit={handleSubmitReview}>
