@@ -65,8 +65,14 @@ class Order(Base):
     driver_payout = Column(Float, nullable=True) 
     payment_method = Column(String(50), default="cash")
     cod_amount = Column(Float, default=0.0)
-    extra_fees = Column(String(500), nullable=True) # [MỚI] Lưu cục JSON phụ phí
-    pickup_image_url = Column(String, nullable=True) # Ảnh chụp khi lấy hàng
+    extra_fees = Column(String(500), nullable=True) 
+    pickup_image_url = Column(String, nullable=True) 
+
+    # [MỚI] THÔNG TIN LIÊN LẠC NGƯỜI GỬI / NGƯỜI NHẬN
+    sender_name = Column(String(100), nullable=True)
+    sender_phone = Column(String(20), nullable=True)
+    receiver_name = Column(String(100), nullable=True)
+    receiver_phone = Column(String(20), nullable=True)
     
 class OrderStatusHistory(Base):
     __tablename__ = "order_status_history"
@@ -140,8 +146,7 @@ class SupportTicket(Base):
 class SupportMessage(Base):
     __tablename__ = "support_messages"
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer)  # ID của người cần hỗ trợ
-    sender_type = Column(String)  # "user", "bot", "admin"
+    user_id = Column(Integer)  
+    sender_type = Column(String)  
     content = Column(String)
     timestamp = Column(DateTime, default=datetime.utcnow)
-    

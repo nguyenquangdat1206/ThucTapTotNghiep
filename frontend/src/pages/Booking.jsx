@@ -3,13 +3,9 @@ import { Container, Card, Form, Button, Alert, Row, Col, InputGroup } from 'reac
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
-// Import 2 Component con mà chúng ta vừa tách ra
 import AddressSearchInput from '../components/AddressSearchInput';
 import BookingMap from '../components/BookingMap';
 
-// =========================================================
-// [MỚI] DANH SÁCH TỌA ĐỘ 8 BẾN CẢNG TP.HCM (DÀNH CHO CONTAINER)
-// =========================================================
 const PORT_LIST = [
   { name: "Cảng Cát Lái", lat: 10.7661, lng: 106.7820 },
   { name: "Cảng Tân Cảng Phú Hữu", lat: 10.7895, lng: 106.8138 },
@@ -34,6 +30,13 @@ export default function Booking() {
   const [dropoffCoords, setDropoffCoords] = useState(null);
   const [pickupAddress, setPickupAddress] = useState('');
   const [dropoffAddress, setDropoffAddress] = useState('');
+  
+  // [MỚI] STATE CHO THÔNG TIN NGƯỜI GỬI & NHẬN
+  const [senderName, setSenderName] = useState(userInfo?.name || '');
+  const [senderPhone, setSenderPhone] = useState(userInfo?.phone || '');
+  const [receiverName, setReceiverName] = useState('');
+  const [receiverPhone, setReceiverPhone] = useState('');
+  
   const [packageDetails, setPackageDetails] = useState('');
 
   const [distance, setDistance] = useState(0);
@@ -63,12 +66,11 @@ export default function Booking() {
     }
   }, []);
 
-  // [ĐÃ SỬA] Reset lại Điểm giao hàng và phụ phí nếu Khách đổi sang chế độ Container
   useEffect(() => { 
     if (serviceType === 'container') {
       setIsBulky(false);
-      setDropoffAddress(''); // Xóa text cũ
-      setDropoffCoords(null); // Xóa GPS cũ để bắt buộc chọn Cảng
+      setDropoffAddress(''); 
+      setDropoffCoords(null); 
     } 
   }, [serviceType]);
 
@@ -123,7 +125,7 @@ export default function Booking() {
         setRoutePolyline(routeData.geometry.coordinates.map(coord => [coord[1], coord[0]]));
       } else throw new Error("No route");
     } catch (error) {
-      setDistance(10.0); // Demo fallback
+      setDistance(10.0); 
       setRoutePolyline([]); 
     }
   };
@@ -193,11 +195,22 @@ export default function Booking() {
 
       await axios.post('https://datquang-backend.onrender.com/orders', {
         customer_id: userInfo.user_id, 
-        pickup_address_id: pickupRes.data.id, dropoff_address_id: dropoffRes.data.id,
-        promo_id: appliedPromo ? appliedPromo.promo_id : null, discount_amount: discountAmount,                           
+        pickup_address_id: pickupRes.data.id, 
+        dropoff_address_id: dropoffRes.data.id,
+        promo_id: appliedPromo ? appliedPromo.promo_id : null, 
+        discount_amount: discountAmount,                           
         package_details: finalDetails, 
-        original_price: basePrice, total_price: finalTotalPrice,
-        extra_fees: JSON.stringify(extraFeesData), payment_method: paymentMethod, cod_amount: hasCod ? (parseInt(codAmount) || 0) : 0
+        original_price: basePrice, 
+        total_price: finalTotalPrice,
+        extra_fees: JSON.stringify(extraFeesData), 
+        payment_method: paymentMethod, 
+        cod_amount: hasCod ? (parseInt(codAmount) || 0) : 0,
+        
+        // [MỚI] TRUYỀN DỮ LIỆU GỬI/NHẬN
+        sender_name: senderName,
+        sender_phone: senderPhone,
+        receiver_name: receiverName,
+        receiver_phone: receiverPhone
       }, { headers: { Authorization: `Bearer ${token}` } });
 
       setIsError(false); setMessage('🎉 Đặt cuốc thành công! Hệ thống đang gọi tài xế...');
@@ -221,7 +234,6 @@ export default function Booking() {
             <Alert variant="warning" className="fw-bold py-2">⚠️ Gợi ý: Bạn đã nhập chữ, nhưng quên click chọn địa chỉ trong danh sách!</Alert>
           )}
 
-          {/* [MỚI] HIỆN CẢNH BÁO CHO CONTAINER */}
           {serviceType === 'container' && (
              <Alert variant="info" className="fw-bold shadow-sm border-info border-2">
                🚢 CHẾ ĐỘ CONTAINER: Điểm giao hàng (trả hàng) bắt buộc phải nằm trong các Bến cảng được cấp phép tại TP.HCM.
@@ -238,7 +250,6 @@ export default function Booking() {
                 </Form.Select>
                 <hr />
 
-                {/* ĐIỂM LẤY HÀNG: Luôn được nhập tự do */}
                 <AddressSearchInput 
                   label="📍 Điểm lấy hàng" placeholder="Nhập địa chỉ..." 
                   value={pickupAddress} onChange={(val) => { setPickupAddress(val); setPickupCoords(null); }} 
@@ -246,7 +257,6 @@ export default function Booking() {
                   badgeColor="secondary" userLocation={userLocation} 
                 />
                 
-                {/* [MỚI] ĐIỂM GIAO HÀNG: Thay đổi giao diện dựa trên Loại xe */}
                 {serviceType === 'container' ? (
                   <Form.Group className="mb-3 position-relative">
                     <Form.Label className="fw-bold text-danger">🚩 Điểm giao hàng (Bến cảng)</Form.Label>
@@ -336,8 +346,41 @@ export default function Booking() {
                 </div>
 
                 <Form onSubmit={handleSubmit}>
+                  {/* [MỚI] GIAO DIỆN NHẬP NGƯỜI GỬI - NGƯỜI NHẬN */}
+                  <h5 className="text-primary mt-4 fw-bold">📍 Người Gửi (Lấy hàng)</h5>
+                  <Row className="mb-3">
+                    <Col md={6}>
+                      <Form.Group>
+                        <Form.Label className="fw-bold text-muted" style={{fontSize: '14px'}}>Tên người gửi</Form.Label>
+                        <Form.Control type="text" value={senderName} onChange={e => setSenderName(e.target.value)} required />
+                      </Form.Group>
+                    </Col>
+                    <Col md={6}>
+                      <Form.Group>
+                        <Form.Label className="fw-bold text-muted" style={{fontSize: '14px'}}>Số điện thoại</Form.Label>
+                        <Form.Control type="tel" value={senderPhone} onChange={e => setSenderPhone(e.target.value)} required />
+                      </Form.Group>
+                    </Col>
+                  </Row>
+
+                  <h5 className="text-danger mt-4 fw-bold">🚩 Người Nhận (Giao hàng)</h5>
+                  <Row className="mb-4">
+                    <Col md={6}>
+                      <Form.Group>
+                        <Form.Label className="fw-bold text-muted" style={{fontSize: '14px'}}>Tên người nhận</Form.Label>
+                        <Form.Control type="text" value={receiverName} onChange={e => setReceiverName(e.target.value)} required />
+                      </Form.Group>
+                    </Col>
+                    <Col md={6}>
+                      <Form.Group>
+                        <Form.Label className="fw-bold text-muted" style={{fontSize: '14px'}}>Số điện thoại</Form.Label>
+                        <Form.Control type="tel" value={receiverPhone} onChange={e => setReceiverPhone(e.target.value)} required />
+                      </Form.Group>
+                    </Col>
+                  </Row>
+
                   <Form.Group className="mb-4">
-                    <Form.Control as="textarea" rows={2} placeholder="Chi tiết hàng hóa..." value={packageDetails} onChange={(e) => setPackageDetails(e.target.value)} required />
+                    <Form.Control as="textarea" rows={2} placeholder="Chi tiết hàng hóa (VD: 2 ly trà sữa, 1 tài liệu)..." value={packageDetails} onChange={(e) => setPackageDetails(e.target.value)} required />
                   </Form.Group>
                   <Button variant="primary" type="submit" size="lg" className="w-100 mb-2 fw-bold" disabled={!pickupCoords || !dropoffCoords || isSubmitting}>
                     {isSubmitting ? 'Đang xử lý...' : '🚀 XÁC NHẬN ĐẶT ĐƠN'}
@@ -348,7 +391,6 @@ export default function Booking() {
             </Col>
             
             <Col lg={8}>
-              {/* GỌI COMPONENT BẢN ĐỒ VÀO ĐÂY */}
               <BookingMap 
                 pickupCoords={pickupCoords} setPickupCoords={setPickupCoords} 
                 dropoffCoords={dropoffCoords} setDropoffCoords={setDropoffCoords} 

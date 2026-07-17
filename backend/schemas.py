@@ -48,7 +48,13 @@ class OrderCreate(BaseModel):
     payment_method: str = "cash"
     cod_amount: float = 0.0
     extra_fees: Optional[str] = None 
-    discount_amount: float = 0.0  # [MỚI] ĐỂ ADMIN BÙ TIỀN CHO TÀI XẾ
+    discount_amount: float = 0.0  
+    
+    # [MỚI] 4 CỘT THÔNG TIN NGƯỜI GỬI / NHẬN
+    sender_name: Optional[str] = None
+    sender_phone: Optional[str] = None
+    receiver_name: Optional[str] = None
+    receiver_phone: Optional[str] = None
 
 class Order(BaseModel):
     id: int
@@ -72,7 +78,6 @@ class OrderReview(BaseModel):
 class TopUpRequest(BaseModel): 
     amount: float
 
-# [MỚI] KHAI BÁO YÊU CẦU RÚT TIỀN
 class WithdrawRequest(BaseModel):
     amount: float
 

@@ -32,7 +32,13 @@ async def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)
         customer_id=order.customer_id, pickup_address_id=order.pickup_address_id, dropoff_address_id=order.dropoff_address_id, 
         promo_id=getattr(order, 'promo_id', None), package_details=order.package_details, original_price=order.original_price, 
         final_price=total_p, current_status="pending", driver_payout=default_payout, 
-        payment_method=getattr(order, 'payment_method', 'cash'), cod_amount=getattr(order, 'cod_amount', 0.0), extra_fees=getattr(order, 'extra_fees', None) 
+        payment_method=getattr(order, 'payment_method', 'cash'), cod_amount=getattr(order, 'cod_amount', 0.0), extra_fees=getattr(order, 'extra_fees', None),
+        
+        # [MỚI] TRUYỀN THÔNG TIN NGƯỜI GỬI / NHẬN VÀO DATABASE
+        sender_name=order.sender_name,
+        sender_phone=order.sender_phone,
+        receiver_name=order.receiver_name,
+        receiver_phone=order.receiver_phone
     )
     db.add(new_order); db.commit(); db.refresh(new_order)
     db.add(models.OrderStatusHistory(order_id=new_order.id, status="pending", changed_by=current_user["user_id"]))
@@ -62,18 +68,11 @@ async def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)
                         db.add(models.OrderStatusHistory(order_id=new_order.id, status="accepted", changed_by=current_user["user_id"], note="Gán ghép tự động cùng chiều"))
                     db.commit(); batch_formed = True; break 
                     
-    # ==========================================================
-    # [ĐÃ FIX TRIỆT ĐỂ] XÓA TOÀN BỘ LOGIC QUÉT TÀI XẾ GÂY LỖI NGẦM 500
-    # Bọc trong Try-Except để đảm bảo API Đặt Đơn KHÔNG BAO GIỜ bị sập
-    # ==========================================================
     try:
-        # 1. Báo cho toàn hệ thống (Admin, Khách hàng) tải lại dữ liệu
         await manager.broadcast(json.dumps({"event": "status_changed"}))
-        
-        # 2. Bắn Radar Nổ Đơn khẩn cấp cho Tài xế
         payload = {
             "event": "urgent_order_alert",
-            "target_role": "driver_express", # Luôn ưu tiên nổ đơn cho xe máy
+            "target_role": "driver_express",
             "order": {
                 "id": new_order.id,
                 "pickup": pickup_addr.address_text if pickup_addr else "Chưa rõ",
@@ -90,12 +89,7 @@ async def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)
 
 @router.get("/orders/pending")
 def get_pending_orders(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    # ==========================================================
-    # [ĐÃ FIX TRIỆT ĐỂ] XÓA MỌI ĐIỀU KIỆN LỌC! 
-    # Dù khách không ghi chữ "Giao nhanh", đơn vẫn sẽ hiện lên Radar Tài xế
-    # ==========================================================
     query = db.query(models.Order).filter(models.Order.current_status == "pending")
-    
     orders = query.all(); result = []; processed_batches = set()
     for o in orders:
         pickup = db.query(models.Address).filter(models.Address.id == o.pickup_address_id).first()
@@ -125,10 +119,8 @@ async def accept_order(order_id: int, driver_id: int, db: Session = Depends(get_
         o.driver_id = driver_id; o.current_status = "accepted"
         db.add(models.OrderStatusHistory(order_id=o.id, status="accepted", changed_by=driver_id))
     db.commit()
-    
     try: await manager.broadcast(json.dumps({"event": "status_changed"}))
     except: pass
-    
     return {"message": "Nhận cuốc thành công!"}
 
 @router.post("/orders/{order_id}/pickup_with_pod")
@@ -169,12 +161,9 @@ async def complete_order_with_pod(order_id: int, file: UploadFile = File(...), d
         order.current_status = "completed"
         db.add(models.OrderStatusHistory(order_id=order.id, status="completed", changed_by=driver.id))
         
-        # =========================================================
-        # [MỚI] HỆ THỐNG TỰ ĐỘNG CHAT CẢM ƠN KHÁCH HÀNG
-        # =========================================================
         auto_msg = models.Message(
             order_id=order.id, 
-            sender_id=driver.id, # Mượn ID tài xế để gửi tin nhắn
+            sender_id=driver.id, 
             content="🎉 HỆ THỐNG: Chuyến đi đã hoàn tất thành công! Cảm ơn bạn đã tin tưởng sử dụng dịch vụ của Đạt Quang Logistics. Chúc bạn một ngày tốt lành và đừng quên để lại đánh giá nhé! ⭐"
         )
         db.add(auto_msg)
@@ -184,7 +173,6 @@ async def complete_order_with_pod(order_id: int, file: UploadFile = File(...), d
     try: 
         await manager.broadcast(json.dumps({"event": "status_changed"}))
         await manager.broadcast(json.dumps({"event": "balance_changed"}))
-        # Kích hoạt cho khung chat nảy thông báo mới
         await manager.broadcast(json.dumps({"event": "new_chat_message", "order_id": order_id}))
     except: pass
     
@@ -194,9 +182,6 @@ async def complete_order_with_pod(order_id: int, file: UploadFile = File(...), d
 async def update_order_status(order_id: int, status: str, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     order = db.query(models.Order).filter(models.Order.id == order_id).first()
     
-    # =========================================================
-    # [MỚI] TRƯỜNG HỢP ADMIN ÉP HOÀN THÀNH ĐƠN
-    # =========================================================
     if status == "completed" and order.current_status != "completed":
         auto_msg = models.Message(
             order_id=order.id, 
@@ -217,45 +202,25 @@ async def update_order_status(order_id: int, status: str, db: Session = Depends(
     
     return {"message": "Thành công!"}
 
-@router.put("/orders/{order_id}/status")
-async def update_order_status(order_id: int, status: str, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    order = db.query(models.Order).filter(models.Order.id == order_id).first()
-    order.current_status = status
-    db.add(models.OrderStatusHistory(order_id=order.id, status=status, changed_by=current_user["user_id"]))
-    db.commit()
-    try: await manager.broadcast(json.dumps({"event": "status_changed"}))
-    except: pass
-    return {"message": "Thành công!"}
-
 @router.put("/orders/{order_id}/driver_cancel")
 async def driver_cancel_order(order_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     order = db.query(models.Order).filter(models.Order.id == order_id).first()
-    
-    # 1. Gỡ tài xế ra khỏi đơn và đưa về trạng thái tìm kiếm
     order.driver_id = None
     order.current_status = "pending"
     db.add(models.OrderStatusHistory(order_id=order.id, status="driver_cancelled", changed_by=current_user["user_id"], note="Nhả cuốc"))
     
-    # =========================================================
-    # [MỚI] 2. HỆ THỐNG TỰ ĐỘNG CHAT XIN LỖI KHÁCH HÀNG
-    # =========================================================
     auto_msg = models.Message(
         order_id=order.id, 
-        sender_id=current_user["user_id"], # Mượn ID tài xế để gửi tin nhắn
+        sender_id=current_user["user_id"], 
         content="🔴 HỆ THỐNG: Tài xế không đến được do sự cố đột xuất. Chúng tôi đã chuyển đơn về lại hệ thống để ưu tiên tìm tài xế khác cho bạn. Rất mong bạn thông cảm!"
     )
     db.add(auto_msg)
-    
     db.commit()
     
-    # 3. Kích loa thông báo cho toàn máy chủ
     try: 
-        # Báo tải lại trạng thái đơn (Từ Đang đến -> Đang tìm)
         await manager.broadcast(json.dumps({"event": "status_changed"}))
-        # Ép khung chat của Khách hàng hiện ngay tin nhắn xin lỗi
         await manager.broadcast(json.dumps({"event": "new_chat_message", "order_id": order_id}))
-    except: 
-        pass
+    except: pass
         
     return {"message": "Thành công!"}
 
@@ -270,6 +235,8 @@ def get_driver_order_history(user_id: int, db: Session = Depends(get_db)):
 @router.get("/orders/{order_id}/details")
 def get_order_details(order_id: int, db: Session = Depends(get_db)):
     order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    if not order: raise HTTPException(404, "Order not found")
+    
     driver = db.query(models.User).filter(models.User.id == order.driver_id).first() if order.driver_id else None
     customer = db.query(models.User).filter(models.User.id == order.customer_id).first()
     pickup = db.query(models.Address).filter(models.Address.id == order.pickup_address_id).first()
@@ -281,11 +248,40 @@ def get_order_details(order_id: int, db: Session = Depends(get_db)):
     order_data["dropoff_location"] = dropoff.address_text if dropoff else ""
     order_data["price"] = order.final_price; order_data["status"] = order.current_status
     order_data["batch_id"] = order.batch_id; order_data["payment_method"] = order.payment_method; order_data["cod_amount"] = order.cod_amount
+    
+    # [MỚI] TRẢ VỀ THÔNG TIN LIÊN LẠC (LẤY TỪ ORDER, NẾU KHÔNG CÓ THÌ LẤY TỪ KHÁCH)
+    order_data["sender_name"] = order.sender_name or customer.name
+    order_data["sender_phone"] = order.sender_phone or customer.phone
+    order_data["receiver_name"] = order.receiver_name or ""
+    order_data["receiver_phone"] = order.receiver_phone or ""
+
     return {"order": order_data, "driver": {"name": driver.name, "phone": driver.phone, "avatar_url": driver.avatar_url} if driver else None, "customer": {"name": customer.name, "phone": customer.phone, "avatar_url": customer.avatar_url}}
 
 @router.get("/orders/batch/{batch_id}/details")
 def get_batch_details(batch_id: str, db: Session = Depends(get_db)):
-    return []
+    # [ĐÃ KHÔI PHỤC] LẤY DANH SÁCH CHI TIẾT ĐƠN GHÉP (BATCH)
+    orders = db.query(models.Order).filter(models.Order.batch_id == batch_id).order_by(models.Order.id.asc()).all()
+    result = []
+    for o in orders:
+        pickup = db.query(models.Address).filter(models.Address.id == o.pickup_address_id).first()
+        dropoff = db.query(models.Address).filter(models.Address.id == o.dropoff_address_id).first()
+        customer = db.query(models.User).filter(models.User.id == o.customer_id).first()
+        result.append({
+            "id": o.id, "status": o.current_status,
+            "pickup": pickup.address_text if pickup else "", "pickup_lat": pickup.latitude if pickup else 0, "pickup_lng": pickup.longitude if pickup else 0,
+            "dropoff": dropoff.address_text if dropoff else "", "dropoff_lat": dropoff.latitude if dropoff else 0, "dropoff_lng": dropoff.longitude if dropoff else 0,
+            "customer_name": customer.name, "customer_phone": customer.phone,
+            "package_details": o.package_details, "price": o.final_price,
+            "payment_method": o.payment_method, "cod_amount": o.cod_amount,
+            "proof_image_url": o.proof_image_url, "pickup_image_url": getattr(o, 'pickup_image_url', None),
+            
+            # [MỚI] THÔNG TIN NGƯỜI GỬI / NHẬN CỦA ĐƠN GHÉP
+            "sender_name": o.sender_name or customer.name,
+            "sender_phone": o.sender_phone or customer.phone,
+            "receiver_name": o.receiver_name or "",
+            "receiver_phone": o.receiver_phone or ""
+        })
+    return result
 
 @router.post("/orders/{order_id}/messages", response_model=schemas.Message)
 async def send_message(order_id: int, message: schemas.MessageCreate, db: Session = Depends(get_db)):
