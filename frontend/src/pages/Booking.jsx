@@ -71,12 +71,11 @@ export default function Booking() {
     } 
   }, [serviceType]);
 
-  // LOGIC TÍNH GIÁ ĐƯỢC KHÔI PHỤC HOÀN TOÀN
   useEffect(() => {
     if (distance > 0) {
       let calcBase = 0;
       if (serviceType === 'container') {
-        const BASE_CONTAINER = 2600000; // 2 triệu 6 cho 20km đầu
+        const BASE_CONTAINER = 2600000; 
         if (distance <= 20) {
             calcBase = BASE_CONTAINER;
         } else {
@@ -84,10 +83,8 @@ export default function Booking() {
             calcBase = BASE_CONTAINER + (extraKm * (distance < 50 ? 33000 : distance < 100 ? 32000 : distance < 200 ? 31500 : 29500));
         }
       } else if (serviceType === 'truck') {
-        // Logic Xe tải: 150k cho 5km đầu, sau đó 15k/km
         calcBase = distance <= 5 ? 150000 : 150000 + (Math.ceil(distance - 5) * 15000);
       } else {
-        // Xe máy
         calcBase = distance <= 3 ? 16000 : 25000 + Math.ceil(distance - 5) * 6500; 
       }
       setBasePrice(Math.ceil(calcBase / 1000) * 1000);
@@ -192,16 +189,13 @@ export default function Booking() {
         {message && <Alert variant={isError ? "danger" : "success"} className="logistics-card border-0 fw-bold">{message}</Alert>}
 
         <Row className="g-5">
-          {/* ============================================== */}
-          {/* CỘT TRÁI: FORM ĐẶT HÀNG (DỰA THEO ẢNH MẪU)   */}
-          {/* ============================================== */}
+          {/* CỘT TRÁI: FORM ĐẶT HÀNG */}
           <Col lg={6}>
             <p className="text-muted mb-1" style={{fontSize:'14px'}}>Đặt vận chuyển</p>
             <h3 className="text-white fw-bold mb-4">Chọn phương tiện</h3>
 
             <Form onSubmit={handleSubmit}>
               
-              {/* 1. LIST CARD CHỌN XE */}
               <div className="d-flex flex-column gap-3 mb-4">
                 <div className={`vehicle-card ${serviceType === 'express' ? 'active' : ''}`} onClick={() => setServiceType('express')}>
                   <div className="d-flex align-items-center">
@@ -237,7 +231,6 @@ export default function Booking() {
                 </div>
               </div>
 
-              {/* 2. ĐỊA CHỈ LẤY GIAO NẰM NGANG */}
               <Row className="g-3 mb-4">
                 <Col md={6}>
                   <div className="logistics-card p-3 h-100">
@@ -272,7 +265,6 @@ export default function Booking() {
                 </Col>
               </Row>
 
-              {/* 3. THÔNG TIN LIÊN HỆ GỌN GÀNG */}
               <div className="logistics-card p-3 mb-4">
                  <Row className="g-2">
                    <Col md={6}><Form.Control className="logistics-input" placeholder="Tên người gửi" value={senderName} onChange={e=>setSenderName(e.target.value)} required/></Col>
@@ -283,7 +275,6 @@ export default function Booking() {
                  <Form.Control as="textarea" rows={2} className="logistics-input mt-3" placeholder="Ghi chú chi tiết hàng hóa..." value={packageDetails} onChange={e=>setPackageDetails(e.target.value)} required/>
               </div>
 
-              {/* 4. DỊCH VỤ THÊM & THANH TOÁN */}
               <Row className="g-3 mb-4">
                  <Col md={6}>
                    <div className="logistics-card p-3 h-100">
@@ -312,9 +303,7 @@ export default function Booking() {
             </Form>
           </Col>
 
-          {/* ============================================== */}
-          {/* CỘT PHẢI: BẢN ĐỒ VÀ HÀNH TRÌNH TẠM             */}
-          {/* ============================================== */}
+          {/* CỘT PHẢI: BẢN ĐỒ VÀ CHI TIẾT CƯỚC PHÍ */}
           <Col lg={6} className="border-start ps-lg-5" style={{ borderColor: 'var(--border-color) !important' }}>
              <div className="d-flex justify-content-between align-items-end mb-4">
                 <div>
@@ -324,7 +313,6 @@ export default function Booking() {
                 <h4 className="text-primary fw-bold mb-0">{finalTotalPrice.toLocaleString()}đ</h4>
              </div>
 
-             {/* MAP WRAPPER (Đã gỡ class dark-map-container để giữ map sáng rõ ràng) */}
              <div className="logistics-card p-2 mb-4" style={{ height: '350px', overflow: 'hidden' }}>
                 <BookingMap 
                     pickupCoords={pickupCoords} setPickupCoords={setPickupCoords} 
@@ -334,18 +322,26 @@ export default function Booking() {
                 />
              </div>
 
-             <h6 className="text-muted fw-bold mb-3">Chi tiết cước phí</h6>
-             <div className="logistics-card p-3">
-                <div className="d-flex justify-content-between text-muted mb-2"><span>Quãng đường ({distance} km)</span><span className="text-white">{basePrice.toLocaleString()}đ</span></div>
+             <h6 className="text-white fw-bold mb-3">Chi tiết cước phí</h6>
+             <div className="logistics-card p-4">
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                   <span className="text-muted fs-5">Quãng đường ({distance} km)</span>
+                   <span className="text-white fw-bold fs-4">{basePrice.toLocaleString()}đ</span>
+                </div>
+                
                 {isBulky && <div className="d-flex justify-content-between text-muted mb-2"><span>Phí cồng kềnh</span><span className="text-white">20.000đ</span></div>}
                 {isDoorDelivery && <div className="d-flex justify-content-between text-muted mb-2"><span>Phí giao tận cửa</span><span className="text-white">10.000đ</span></div>}
                 {(parseInt(tipAmount)>0) && <div className="d-flex justify-content-between text-muted mb-2"><span>Tiền tip bồi dưỡng</span><span className="text-white">{parseInt(tipAmount).toLocaleString()}đ</span></div>}
                 
-                <div className="d-flex mt-3 gap-2">
-                   <Form.Control type="text" className="logistics-input flex-grow-1" placeholder="Mã giảm giá..." value={promoCodeInput} onChange={e=>setPromoCodeInput(e.target.value.toUpperCase())}/>
-                   <Button variant="outline-light" className="fw-bold" style={{borderColor:'var(--border-color)', color:'var(--text-muted)'}} onClick={handleApplyPromo}>ÁP DỤNG</Button>
+                {/* ĐƯỜNG KẺ NGANG ĐỂ TÁCH BIỆT RÕ RÀNG */}
+                <hr className="my-4" style={{borderColor: 'var(--border-color)'}}/>
+                
+                {/* NÚT ÁP DỤNG MÀU CAM NEON NỔI BẬT */}
+                <div className="d-flex gap-3 align-items-center">
+                   <Form.Control type="text" className="logistics-input flex-grow-1" placeholder="Nhập mã giảm giá..." value={promoCodeInput} onChange={e=>setPromoCodeInput(e.target.value.toUpperCase())}/>
+                   <Button className="btn-orange px-4 py-2 fw-bold" onClick={handleApplyPromo}>ÁP DỤNG</Button>
                 </div>
-                {appliedPromo && <div className="text-success mt-2 fs-6">Đã giảm {appliedPromo.discount_amount.toLocaleString()}đ</div>}
+                {appliedPromo && <div className="text-success mt-3 fs-6 fw-bold">🎉 Áp dụng thành công! Đã giảm {appliedPromo.discount_amount.toLocaleString()}đ</div>}
              </div>
           </Col>
 
