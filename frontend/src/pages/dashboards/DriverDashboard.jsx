@@ -109,25 +109,34 @@ export default function DriverDashboard({ userInfo }) {
 
   if (loading) return <DashboardSkeleton />;
 
+  // HÀM QUÉT GIÁ TRỊ CƯỚC PHÍ AN TOÀN
+  const getSafePrice = (order) => {
+    return parseFloat(order.total_price) || parseFloat(order.original_price) || parseFloat(order.price) || 0;
+  };
+
   const groupedPendingOrders = Object.values(pendingOrders.reduce((acc, order) => {
+    const itemPrice = getSafePrice(order);
     if (order.batch_id) {
-        if (!acc[order.batch_id]) acc[order.batch_id] = { ...order, is_batch: true, total_price: 0, ids: [] };
-        acc[order.batch_id].total_price += order.price; acc[order.batch_id].ids.push(order.id);
-    } else { acc[order.id] = { ...order, total_price: order.price, ids: [order.id] }; }
+        if (!acc[order.batch_id]) acc[order.batch_id] = { ...order, is_batch: true, calculated_price: 0, ids: [] };
+        acc[order.batch_id].calculated_price += itemPrice;
+        acc[order.batch_id].ids.push(order.id);
+    } else { acc[order.id] = { ...order, calculated_price: itemPrice, ids: [order.id] }; }
     return acc;
   }, {}));
 
   const groupedMyOrders = Object.values(myOrders.reduce((acc, order) => {
+    const itemPrice = getSafePrice(order);
     if (order.batch_id) {
-        if (!acc[order.batch_id]) acc[order.batch_id] = { ...order, is_batch: true, ids: [] };
+        if (!acc[order.batch_id]) acc[order.batch_id] = { ...order, is_batch: true, ids: [], calculated_price: 0 };
         else {
             const statusPriority = { 'pending': 1, 'accepted': 2, 'arrived_pickup': 3, 'picking_up': 4, 'delivering': 5, 'cancel_requested': 6, 'completed': 7, 'cancelled': 8 };
             const currentPrio = statusPriority[acc[order.batch_id].status] || 7;
             const newPrio = statusPriority[order.status] || 7;
             if (newPrio < currentPrio) acc[order.batch_id].status = order.status;
         }
+        acc[order.batch_id].calculated_price += itemPrice;
         acc[order.batch_id].ids.push(order.id);
-    } else { acc[order.id] = { ...order, is_batch: false, ids: [order.id] }; }
+    } else { acc[order.id] = { ...order, is_batch: false, ids: [order.id], calculated_price: itemPrice }; }
     return acc;
   }, {}));
 
@@ -157,7 +166,7 @@ export default function DriverDashboard({ userInfo }) {
           </div>
         </div>
 
-        {/* CÔNG TẮC TRỰC TUYẾN / NGOẠI TUYẾN CHUYÊN NGHIỆP */}
+        {/* CÔNG TẮC TRỰC TUYẾN / NGOẠI TUYẾN */}
         <div className="logistics-card p-4 mb-4 text-center">
             <h6 className="text-muted text-uppercase fw-bold mb-3">TRẠNG THÁI HOẠT ĐỘNG</h6>
             <div className="d-flex justify-content-center">
@@ -209,7 +218,7 @@ export default function DriverDashboard({ userInfo }) {
                       </div>
                     </div>
                     <div className="text-end">
-                      <h3 className="fw-bold mb-3" style={{ color: '#4ADE80' }}>{order.total_price.toLocaleString()} đ</h3>
+                      <h3 className="fw-bold mb-3" style={{ color: '#4ADE80' }}>{order.calculated_price.toLocaleString()} đ</h3>
                       <div className="d-flex gap-2 justify-content-end">
                           <Button variant="outline-light" style={{borderColor: 'var(--border-color)'}} onClick={() => navigate(`/order/${order.ids[0]}`)}>Chi tiết</Button>
                           <Button className="btn-orange px-4" onClick={() => handleAcceptOrder(order.ids[0])}>🤝 CHỐT ĐƠN</Button>
@@ -227,8 +236,7 @@ export default function DriverDashboard({ userInfo }) {
           ) : (
             <div className="d-flex flex-column gap-3">
               {groupedMyOrders.map((order, idx) => {
-                // Giả lập thu nhập tài xế: Thường là 80% tổng giá trị cước phí
-                const driverEarnings = (order.total_price || order.price || 0) * 0.8;
+                const driverEarnings = order.calculated_price * 0.8;
                 
                 return (
                 <div 
@@ -252,15 +260,15 @@ export default function DriverDashboard({ userInfo }) {
                          </span>
                       </div>
                     </div>
-                    {/* Thu nhập tài xế */}
+                    {/* Đã fix hiển thị đúng thu nhập */}
                     <div className="text-white fw-bold fs-5 mt-1">
-                        {driverEarnings.toLocaleString()}đ
+                        {driverEarnings > 0 ? `${driverEarnings.toLocaleString()}đ` : 'Đang tính toán...'}
                     </div>
                   </div>
                   
                   {/* CHI TIẾT ĐIỂM LẤY / GIAO */}
                   <div className="p-3 position-relative">
-                     {/* Thanh nối dọc mờ mờ */}
+                     {/* Thanh nối dọc */}
                      <div className="position-absolute" style={{ left: '23px', top: '32px', bottom: '45px', width: '2px', backgroundColor: 'var(--border-color)', zIndex: 1 }}></div>
                      
                      {/* ĐIỂM LẤY */}
@@ -275,10 +283,9 @@ export default function DriverDashboard({ userInfo }) {
                                </div>
                            </div>
                            <div className="text-white mb-2 fw-bold" style={{fontSize: '14.5px', lineHeight: '1.4'}}>
-                              {order.pickup_location || order.pickup_address || order.pickup || 'Xem chi tiết địa chỉ trong lộ trình...'}
+                              {order.pickup_location || order.pickup_address || order.pickup || <span className="text-info fst-italic">Nhấn vào để xem tọa độ / địa chỉ ↗</span>}
                            </div>
                            <div>
-                              {/* Label thay vì Button */}
                               <span className="fw-bold px-2 py-1" style={{ color: '#FF4D4D', border: '1px solid #FF4D4D', borderRadius: '4px', fontSize: '12px', backgroundColor: 'rgba(255, 77, 77, 0.1)' }}>
                                 Lấy ngay
                               </span>
@@ -298,17 +305,14 @@ export default function DriverDashboard({ userInfo }) {
                                </div>
                            </div>
                            <div className="text-white mb-2 fw-bold" style={{fontSize: '14.5px', lineHeight: '1.4'}}>
-                              {order.dropoff_location || order.dropoff_address || order.dropoff || 'Xem chi tiết địa chỉ trong lộ trình...'}
+                              {order.dropoff_location || order.dropoff_address || order.dropoff || <span className="text-info fst-italic">Nhấn vào để xem tọa độ / địa chỉ ↗</span>}
                            </div>
                            <div className="d-flex gap-2 align-items-center">
-                              {/* Label thay vì Button */}
                               <span className="fw-bold px-2 py-1" style={{ color: '#4ADE80', border: '1px solid #4ADE80', borderRadius: '4px', fontSize: '12px', backgroundColor: 'rgba(74, 222, 128, 0.1)' }}>
                                 Giao ngay
                               </span>
-                              
-                              {/* Khung số Km nhỏ gọn */}
                               <span className="fw-bold px-2 py-1 text-muted" style={{ border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--bg-input)' }}>
-                                {order.distance ? `${order.distance} km` : '--- km'}
+                                {order.distance ? `${parseFloat(order.distance).toFixed(1)} km` : '-- km'}
                               </span>
                            </div>
                         </div>
@@ -320,29 +324,18 @@ export default function DriverDashboard({ userInfo }) {
           )}
         </div>
 
-        {/* MODAL CẬP NHẬT HỒ SƠ */}
+        {/* MODAL CẬP NHẬT HỒ SƠ & BÁO ĐỘNG ĐƠN KHẨN (Không đổi) */}
+        {/* ... */}
         <Modal show={showProfileModal} onHide={() => setShowProfileModal(false)} centered contentClassName="logistics-card border-0">
           <Modal.Header closeButton className="border-bottom" style={{borderColor: 'var(--border-color)'}}>
               <Modal.Title className="fw-bold text-white">Hồ Sơ Đối Tác</Modal.Title>
           </Modal.Header>
           <Form onSubmit={handleUpdateProfile}>
             <Modal.Body className="p-4">
-              <Form.Group className="mb-3">
-                <Form.Label className="text-muted fw-bold" style={{fontSize: '13px'}}>HỌ VÀ TÊN</Form.Label>
-                <Form.Control type="text" className="logistics-input" value={profileForm.name} onChange={(e) => setProfileForm({...profileForm, name: e.target.value})} required />
-              </Form.Group>
-              <Form.Group className="mb-3">
-                <Form.Label className="text-muted fw-bold" style={{fontSize: '13px'}}>SỐ ĐIỆN THOẠI</Form.Label>
-                <Form.Control type="tel" className="logistics-input" value={profileForm.phone} onChange={(e) => setProfileForm({...profileForm, phone: e.target.value})} />
-              </Form.Group>
-              <Form.Group className="mb-3">
-                <Form.Label className="text-muted fw-bold" style={{fontSize: '13px'}}>BIỂN SỐ XE</Form.Label>
-                <Form.Control type="text" className="logistics-input text-uppercase" value={profileForm.license_plate} onChange={(e) => setProfileForm({...profileForm, license_plate: e.target.value})} required />
-              </Form.Group>
-              <Form.Group className="mb-3">
-                <Form.Label className="text-muted fw-bold" style={{fontSize: '13px'}}>ẢNH ĐẠI DIỆN</Form.Label>
-                <Form.Control type="file" className="logistics-input" accept="image/*" onChange={(e) => setAvatarFile(e.target.files[0])} />
-              </Form.Group>
+              <Form.Group className="mb-3"><Form.Label className="text-muted fw-bold" style={{fontSize: '13px'}}>HỌ VÀ TÊN</Form.Label><Form.Control type="text" className="logistics-input" value={profileForm.name} onChange={(e) => setProfileForm({...profileForm, name: e.target.value})} required /></Form.Group>
+              <Form.Group className="mb-3"><Form.Label className="text-muted fw-bold" style={{fontSize: '13px'}}>SỐ ĐIỆN THOẠI</Form.Label><Form.Control type="tel" className="logistics-input" value={profileForm.phone} onChange={(e) => setProfileForm({...profileForm, phone: e.target.value})} /></Form.Group>
+              <Form.Group className="mb-3"><Form.Label className="text-muted fw-bold" style={{fontSize: '13px'}}>BIỂN SỐ XE</Form.Label><Form.Control type="text" className="logistics-input text-uppercase" value={profileForm.license_plate} onChange={(e) => setProfileForm({...profileForm, license_plate: e.target.value})} required /></Form.Group>
+              <Form.Group className="mb-3"><Form.Label className="text-muted fw-bold" style={{fontSize: '13px'}}>ẢNH ĐẠI DIỆN</Form.Label><Form.Control type="file" className="logistics-input" accept="image/*" onChange={(e) => setAvatarFile(e.target.files[0])} /></Form.Group>
             </Modal.Body>
             <Modal.Footer className="border-top" style={{borderColor: 'var(--border-color)'}}>
                 <Button variant="outline-secondary" className="text-muted border-0" onClick={() => setShowProfileModal(false)}>Hủy</Button>
@@ -351,7 +344,6 @@ export default function DriverDashboard({ userInfo }) {
           </Form>
         </Modal>
 
-        {/* POPUP BÁO ĐỘNG ĐƠN KHẨN CẤP */}
         <Modal show={showUrgentPopup} onHide={() => {}} backdrop="static" centered size="lg" contentClassName="logistics-card border-0" style={{ border: '2px solid var(--brand-orange) !important', boxShadow: '0 0 30px rgba(255, 102, 51, 0.4)' }}>
            <Modal.Header className="text-center d-block border-0 rounded-top pb-0 mt-3">
                <Modal.Title className="fw-bold fs-3 text-white">🚨 CÓ ĐƠN ĐIỀU PHỐI KHẨN CẤP! 🚨</Modal.Title>
@@ -361,7 +353,7 @@ export default function DriverDashboard({ userInfo }) {
                 <div className="bg-dark p-4 rounded-3 border" style={{ borderColor: 'var(--border-color)' }}>
                   <p className="fs-5 text-muted fw-bold mb-4">📍 {urgentOrder.pickup} <br/><br/><span className="text-white fs-4">⬇️</span><br/><br/>🚩 {urgentOrder.dropoff}</p>
                   <div className="fw-bold" style={{ fontSize: '3rem', color: '#4ADE80' }}>
-                      {(urgentOrder.price * 0.8).toLocaleString()} đ
+                      {(getSafePrice(urgentOrder) * 0.8).toLocaleString()} đ
                   </div>
                   <div className="text-danger fw-bold mt-3 fs-5">{urgentOrder.details}</div>
                 </div>
