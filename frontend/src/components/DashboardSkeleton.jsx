@@ -1,46 +1,65 @@
 import React from 'react';
-import { Container, Card, Placeholder, Row, Col } from 'react-bootstrap';
+import { Container, Placeholder, Row, Col } from 'react-bootstrap';
 
 export default function DashboardSkeleton() {
   return (
-    <Container className="mt-5">
-      <Card className="shadow p-4 border-top border-secondary border-4 mb-5">
-        <Placeholder as="h2" animation="glow" className="mb-4">
-          <Placeholder xs={4} />
-        </Placeholder>
-        <div className="d-flex justify-content-between align-items-center mb-3">
-          <div className="d-flex align-items-center">
-            <Placeholder animation="glow">
-              <Placeholder style={{width: '60px', height: '60px', borderRadius: '50%'}} />
+    <Container fluid className="py-5" style={{ backgroundColor: 'var(--bg-main)', minHeight: '100vh' }}>
+      <Container style={{ maxWidth: '1200px' }}>
+        
+        {/* KHUNG HEADER TẢI TRANG */}
+        <div className="logistics-card p-4 mb-4 d-flex justify-content-between align-items-center flex-wrap">
+          <div className="d-flex align-items-center w-50">
+            <Placeholder animation="glow" className="me-3">
+              <Placeholder style={{ width: '65px', height: '65px', borderRadius: '12px', backgroundColor: 'var(--border-color)' }} />
             </Placeholder>
-            <div className="ms-3">
-              <Placeholder as="h5" animation="glow" className="mb-1">
-                <Placeholder xs={12} style={{width: '150px'}} />
-              </Placeholder>
-              <Placeholder as="div" animation="glow">
-                <Placeholder xs={12} style={{width: '100px'}} />
-              </Placeholder>
-            </div>
+            <Placeholder as="div" animation="glow" className="w-50">
+              <Placeholder xs={6} className="mb-2 rounded" style={{ backgroundColor: 'var(--border-color)', height: '20px' }} />
+              <br/>
+              <Placeholder xs={4} className="rounded" style={{ backgroundColor: 'var(--border-color)', height: '15px' }} />
+            </Placeholder>
           </div>
-          <div>
-            <Placeholder.Button variant="outline-secondary" className="me-2" style={{width: '80px'}} />
-            <Placeholder.Button variant="outline-secondary" style={{width: '80px'}} />
-          </div>
+          <Placeholder as="div" animation="glow" className="d-flex gap-2 mt-3 mt-md-0">
+             <Placeholder.Button xs={12} style={{ width: '80px', backgroundColor: 'var(--border-color)', borderColor: 'var(--border-color)' }} />
+             <Placeholder.Button xs={12} style={{ width: '80px', backgroundColor: 'var(--border-color)', borderColor: 'var(--border-color)' }} />
+          </Placeholder>
         </div>
-        <hr />
-        <Row className="mb-4 mt-4">
+
+        {/* KHUNG THỐNG KÊ (Dùng chung cho Admin/Driver) */}
+        <Row className="g-3 mb-4">
           {[1, 2, 3, 4].map(i => (
-            <Col md={3} key={i}>
-              <Placeholder animation="glow">
-                <Placeholder className="w-100 rounded shadow-sm" style={{height: '90px'}} />
-              </Placeholder>
+            <Col md={3} sm={6} key={i}>
+              <div className="logistics-card p-4 text-center">
+                <Placeholder as="div" animation="glow">
+                  <Placeholder xs={8} className="mb-3 rounded" style={{ backgroundColor: 'var(--border-color)', height: '12px' }} />
+                  <br/>
+                  <Placeholder xs={5} className="rounded" style={{ backgroundColor: 'var(--border-color)', height: '30px' }} />
+                </Placeholder>
+              </div>
             </Col>
           ))}
         </Row>
-        <Placeholder animation="glow">
-          <Placeholder className="w-100 rounded" style={{height: '250px'}} />
-        </Placeholder>
-      </Card>
+
+        {/* KHUNG DANH SÁCH ĐƠN HÀNG */}
+        <div className="logistics-card p-4">
+          <Placeholder as="div" animation="glow" className="mb-4">
+            <Placeholder xs={3} className="rounded" style={{ backgroundColor: 'var(--border-color)', height: '25px' }} />
+          </Placeholder>
+          
+          {[1, 2, 3].map(i => (
+            <div key={i} className="p-3 mb-3 rounded" style={{ border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-input)' }}>
+              <Placeholder as="div" animation="glow" className="d-flex justify-content-between align-items-center">
+                <div className="w-75">
+                  <Placeholder xs={3} className="mb-2 rounded" style={{ backgroundColor: 'var(--border-color)', height: '20px' }} />
+                  <br/>
+                  <Placeholder xs={8} className="rounded" style={{ backgroundColor: 'var(--border-color)', height: '15px' }} />
+                </div>
+                <Placeholder.Button xs={2} style={{ backgroundColor: 'var(--border-color)', borderColor: 'var(--border-color)' }} />
+              </Placeholder>
+            </div>
+          ))}
+        </div>
+        
+      </Container>
     </Container>
   );
 }
