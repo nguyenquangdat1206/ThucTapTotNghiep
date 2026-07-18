@@ -227,15 +227,64 @@ export default function DriverDashboard({ userInfo }) {
           ) : (
             <div className="d-flex flex-column gap-3">
               {groupedMyOrders.map((order, idx) => (
-                <div key={idx} className="logistics-card p-3 d-flex justify-content-between align-items-center flex-wrap" style={{ borderLeft: '4px solid var(--text-muted)' }}>
-                  <div className="mb-2 mb-md-0">
-                    <strong className="text-white">
-                      {order.is_batch ? `📦 CHUYẾN GHÉP (${order.ids.length} TRẠM)` : `Đơn #${order.id}`}
-                    </strong>
+                <div key={idx} className="logistics-card overflow-hidden p-0 shadow-sm">
+                  
+                  {/* THANH TRÊN CÙNG: MÃ ĐƠN & GIÁ */}
+                  <div className="p-3 border-bottom d-flex justify-content-between align-items-center" style={{ borderColor: 'var(--border-color)', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                    <h5 className="text-danger fw-bold mb-0" style={{ letterSpacing: '1px' }}>
+                      {order.is_batch ? `📦 GHÉP-${order.ids[0]}` : `${order.id}`}
+                    </h5>
+                    <div className="d-flex align-items-center gap-2">
+                       <span className="text-warning fw-bold fs-5">{order.total_price?.toLocaleString() || order.price?.toLocaleString()}đ</span>
+                       <span className="text-muted" style={{fontSize: '12px'}}>🚚 Delivery</span>
+                    </div>
                   </div>
-                  <Button variant="outline-secondary" size="sm" className="fw-bold text-white border-0" onClick={() => navigate(`/order/${order.ids[0]}`)}>
-                      Mở Lộ Trình &rarr;
-                  </Button>
+                  
+                  {/* CHI TIẾT ĐIỂM LẤY / GIAO (MÔ PHỎNG SHOPEEFOOD) */}
+                  <div className="p-3 position-relative">
+                     {/* Thanh nối dọc */}
+                     <div className="position-absolute" style={{ left: '23px', top: '32px', bottom: '45px', width: '2px', backgroundColor: 'var(--border-color)', zIndex: 1 }}></div>
+                     
+                     {/* ĐIỂM LẤY */}
+                     <div className="d-flex mb-4 position-relative" style={{ zIndex: 2 }}>
+                        <div className="me-3 mt-1">
+                           <div style={{width:'14px', height:'14px', borderRadius:'50%', backgroundColor:'#FF4D4D', border:'2px solid var(--bg-card)'}}></div>
+                        </div>
+                        <div className="flex-grow-1">
+                           <div className="d-flex justify-content-between align-items-start mb-1">
+                               <div className="text-muted fw-bold">
+                                  Lấy: <span className="text-white">{order.sender_name || (order.is_batch ? 'Nhiều điểm lấy' : 'Người gửi')}</span>
+                               </div>
+                           </div>
+                           <div className="text-white mb-2" style={{fontSize: '14.5px', lineHeight: '1.4'}}>
+                              {order.pickup_location || order.pickup || 'Xem chi tiết trong lộ trình'}
+                           </div>
+                           <Button size="sm" variant="outline-danger" className="fw-bold px-3 py-1" style={{ borderRadius: '4px' }} onClick={() => navigate(`/order/${order.ids[0]}`)}>
+                              Lấy ngay
+                           </Button>
+                        </div>
+                     </div>
+
+                     {/* ĐIỂM GIAO */}
+                     <div className="d-flex position-relative" style={{ zIndex: 2 }}>
+                        <div className="me-3 mt-1">
+                           <div style={{width:'14px', height:'14px', borderRadius:'50%', backgroundColor:'#4ADE80', border:'2px solid var(--bg-card)'}}></div>
+                        </div>
+                        <div className="flex-grow-1">
+                           <div className="d-flex justify-content-between align-items-start mb-1">
+                               <div className="text-muted fw-bold">
+                                  Giao: <span className="text-white">{order.receiver_name || (order.is_batch ? 'Nhiều điểm giao' : 'Người nhận')}</span>
+                               </div>
+                           </div>
+                           <div className="text-white mb-2" style={{fontSize: '14.5px', lineHeight: '1.4'}}>
+                              {order.dropoff_location || order.dropoff || 'Xem chi tiết trong lộ trình'}
+                           </div>
+                           <Button size="sm" variant="outline-success" className="fw-bold px-3 py-1" style={{ color: '#4ADE80', borderColor: '#4ADE80', borderRadius: '4px' }} onClick={() => navigate(`/order/${order.ids[0]}`)}>
+                              Giao ngay
+                           </Button>
+                        </div>
+                     </div>
+                  </div>
                 </div>
               ))}
             </div>
