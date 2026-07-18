@@ -69,6 +69,7 @@ export default function CustomerDashboard({ userInfo }) {
     switch(status) {
       case 'pending': return <Badge bg="secondary" className="px-3 py-2">Đang tìm tài xế</Badge>;
       case 'accepted': return <Badge bg="info" className="px-3 py-2 text-dark">Tài xế đang đến</Badge>;
+      case 'arrived_pickup': return <Badge bg="primary" className="px-3 py-2">Đã tới điểm lấy</Badge>; /* <-- ĐÃ BỔ SUNG DÒNG NÀY */
       case 'picking_up': return <Badge bg="warning" className="px-3 py-2 text-dark">Đã lấy hàng</Badge>;
       case 'delivering': return <Badge style={{backgroundColor: 'var(--brand-orange)'}} className="px-3 py-2 text-white">Đang giao hàng</Badge>;
       case 'completed': return <Badge bg="success" className="px-3 py-2">Đã hoàn thành</Badge>;
@@ -80,8 +81,7 @@ export default function CustomerDashboard({ userInfo }) {
 
   if (loading) return <DashboardSkeleton />;
 
-  // Tìm xem có đơn nào đang chạy không (Live Tracking giả lập)
-  const activeOrders = myOrders.filter(o => ['pending', 'accepted', 'picking_up', 'delivering'].includes(o.status));
+  const activeOrders = myOrders.filter(o => ['pending', 'accepted', 'arrived_pickup', 'picking_up', 'delivering'].includes(o.status));
 
   return (
     <Container fluid className="py-5" style={{ backgroundColor: 'var(--bg-main)', minHeight: '100vh' }}>
@@ -140,13 +140,13 @@ export default function CustomerDashboard({ userInfo }) {
 
         <h5 className="fw-bold text-white mb-3">Lịch sử giao dịch</h5>
         
-        {myOrders.filter(o => !['pending', 'accepted', 'picking_up', 'delivering'].includes(o.status)).length === 0 ? (
+        {myOrders.filter(o => !['pending', 'accepted', 'arrived_pickup', 'picking_up', 'delivering'].includes(o.status)).length === 0 ? (
             <div className="logistics-card p-5 text-center text-muted fw-bold border-dashed fs-6" style={{ borderStyle: 'dashed' }}>
                 Chưa có lịch sử chuyến đi nào hoàn tất.
             </div>
         ) : (
             <div className="d-flex flex-column gap-3">
-              {myOrders.filter(o => !['pending', 'accepted', 'picking_up', 'delivering'].includes(o.status)).map(order => (
+              {myOrders.filter(o => !['pending', 'accepted', 'arrived_pickup', 'picking_up', 'delivering'].includes(o.status)).map(order => (
                 <div key={order.id} className="logistics-card p-3 d-flex justify-content-between align-items-center flex-wrap">
                   <div className="mb-2 mb-md-0">
                     <strong className="text-white">Mã Đơn: #{order.id}</strong>

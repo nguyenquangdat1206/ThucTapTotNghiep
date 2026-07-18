@@ -109,7 +109,6 @@ export default function DriverDashboard({ userInfo }) {
 
   if (loading) return <DashboardSkeleton />;
 
-  // HÀM QUÉT GIÁ TRỊ CƯỚC PHÍ AN TOÀN
   const getSafePrice = (order) => {
     return parseFloat(order.total_price) || parseFloat(order.original_price) || parseFloat(order.price) || 0;
   };
@@ -238,6 +237,10 @@ export default function DriverDashboard({ userInfo }) {
               {groupedMyOrders.map((order, idx) => {
                 const driverEarnings = order.calculated_price * 0.8;
                 
+                {/* TRUY QUÉT DỮ LIỆU ĐỊA CHỈ TỪ MỌI NGÓC NGÁCH CỦA SERVER TRẢ VỀ */}
+                const pickupStr = order.pickup_address?.address_text || order.pickup_address_text || order.pickup_location || order.pickup;
+                const dropoffStr = order.dropoff_address?.address_text || order.dropoff_address_text || order.dropoff_location || order.dropoff;
+                
                 return (
                 <div 
                     key={idx} 
@@ -248,7 +251,7 @@ export default function DriverDashboard({ userInfo }) {
                     onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--border-color)'}
                 >
                   
-                  {/* THANH TRÊN CÙNG: MÃ ĐƠN & THU NHẬP TÀI XẾ */}
+                  {/* THANH TRÊN CÙNG */}
                   <div className="p-3 border-bottom" style={{ borderColor: 'var(--border-color)', backgroundColor: 'rgba(255,255,255,0.02)' }}>
                     <div className="d-flex justify-content-between align-items-center mb-1">
                       <h5 className="text-danger fw-bold mb-0" style={{ letterSpacing: '1px' }}>
@@ -260,15 +263,13 @@ export default function DriverDashboard({ userInfo }) {
                          </span>
                       </div>
                     </div>
-                    {/* Đã fix hiển thị đúng thu nhập */}
                     <div className="text-white fw-bold fs-5 mt-1">
-                        {driverEarnings > 0 ? `${driverEarnings.toLocaleString()}đ` : 'Đang tính toán...'}
+                        {driverEarnings > 0 ? `${driverEarnings.toLocaleString()}đ` : 'Đang cập nhật giá...'}
                     </div>
                   </div>
                   
                   {/* CHI TIẾT ĐIỂM LẤY / GIAO */}
                   <div className="p-3 position-relative">
-                     {/* Thanh nối dọc */}
                      <div className="position-absolute" style={{ left: '23px', top: '32px', bottom: '45px', width: '2px', backgroundColor: 'var(--border-color)', zIndex: 1 }}></div>
                      
                      {/* ĐIỂM LẤY */}
@@ -283,12 +284,10 @@ export default function DriverDashboard({ userInfo }) {
                                </div>
                            </div>
                            <div className="text-white mb-2 fw-bold" style={{fontSize: '14.5px', lineHeight: '1.4'}}>
-                              {order.pickup_location || order.pickup_address || order.pickup || <span className="text-info fst-italic">Nhấn vào để xem tọa độ / địa chỉ ↗</span>}
+                              {pickupStr || <span className="text-info fst-italic">Nhấn vào để xem tọa độ / địa chỉ ↗</span>}
                            </div>
                            <div>
-                              <span className="fw-bold px-2 py-1" style={{ color: '#FF4D4D', border: '1px solid #FF4D4D', borderRadius: '4px', fontSize: '12px', backgroundColor: 'rgba(255, 77, 77, 0.1)' }}>
-                                Lấy ngay
-                              </span>
+                              <span className="fw-bold px-2 py-1" style={{ color: '#FF4D4D', border: '1px solid #FF4D4D', borderRadius: '4px', fontSize: '12px', backgroundColor: 'rgba(255, 77, 77, 0.1)' }}>Lấy ngay</span>
                            </div>
                         </div>
                      </div>
@@ -305,15 +304,17 @@ export default function DriverDashboard({ userInfo }) {
                                </div>
                            </div>
                            <div className="text-white mb-2 fw-bold" style={{fontSize: '14.5px', lineHeight: '1.4'}}>
-                              {order.dropoff_location || order.dropoff_address || order.dropoff || <span className="text-info fst-italic">Nhấn vào để xem tọa độ / địa chỉ ↗</span>}
+                              {dropoffStr || <span className="text-info fst-italic">Nhấn vào để xem tọa độ / địa chỉ ↗</span>}
                            </div>
                            <div className="d-flex gap-2 align-items-center">
-                              <span className="fw-bold px-2 py-1" style={{ color: '#4ADE80', border: '1px solid #4ADE80', borderRadius: '4px', fontSize: '12px', backgroundColor: 'rgba(74, 222, 128, 0.1)' }}>
-                                Giao ngay
-                              </span>
-                              <span className="fw-bold px-2 py-1 text-muted" style={{ border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--bg-input)' }}>
-                                {order.distance ? `${parseFloat(order.distance).toFixed(1)} km` : '-- km'}
-                              </span>
+                              <span className="fw-bold px-2 py-1" style={{ color: '#4ADE80', border: '1px solid #4ADE80', borderRadius: '4px', fontSize: '12px', backgroundColor: 'rgba(74, 222, 128, 0.1)' }}>Giao ngay</span>
+                              
+                              {/* Chỉ hiển thị số KM nếu có dữ liệu từ server */}
+                              {order.distance && (
+                                <span className="fw-bold px-2 py-1 text-muted" style={{ border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--bg-input)' }}>
+                                  {parseFloat(order.distance).toFixed(1)} km
+                                </span>
+                              )}
                            </div>
                         </div>
                      </div>
@@ -324,8 +325,7 @@ export default function DriverDashboard({ userInfo }) {
           )}
         </div>
 
-        {/* MODAL CẬP NHẬT HỒ SƠ & BÁO ĐỘNG ĐƠN KHẨN (Không đổi) */}
-        {/* ... */}
+        {/* CÁC MODAL KHÁC ... */}
         <Modal show={showProfileModal} onHide={() => setShowProfileModal(false)} centered contentClassName="logistics-card border-0">
           <Modal.Header closeButton className="border-bottom" style={{borderColor: 'var(--border-color)'}}>
               <Modal.Title className="fw-bold text-white">Hồ Sơ Đối Tác</Modal.Title>
