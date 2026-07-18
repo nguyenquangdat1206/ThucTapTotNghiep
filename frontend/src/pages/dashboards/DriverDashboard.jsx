@@ -202,8 +202,8 @@ export default function DriverDashboard({ userInfo }) {
                           <span className="fw-bold text-white">📍 Chuyến đi nhiều trạm (Ghép lộ trình)</span>
                         ) : (
                           <>
-                            <div className="mb-1"><strong>📍 Điểm lấy:</strong> <span className="text-white">{order.pickup_location}</span></div>
-                            <div><strong>🚩 Điểm giao:</strong> <span className="text-white">{order.dropoff_location}</span></div>
+                            <div className="mb-1"><strong>📍 Điểm lấy:</strong> <span className="text-white">{order.pickup_location || order.pickup}</span></div>
+                            <div><strong>🚩 Điểm giao:</strong> <span className="text-white">{order.dropoff_location || order.dropoff}</span></div>
                           </>
                         )}
                       </div>
@@ -226,23 +226,41 @@ export default function DriverDashboard({ userInfo }) {
             <div className="logistics-card p-4 text-center text-muted fw-bold">Bạn chưa nhận chuyến xe nào.</div>
           ) : (
             <div className="d-flex flex-column gap-3">
-              {groupedMyOrders.map((order, idx) => (
-                <div key={idx} className="logistics-card overflow-hidden p-0 shadow-sm">
+              {groupedMyOrders.map((order, idx) => {
+                // Giả lập thu nhập tài xế: Thường là 80% tổng giá trị cước phí
+                const driverEarnings = (order.total_price || order.price || 0) * 0.8;
+                
+                return (
+                <div 
+                    key={idx} 
+                    className="logistics-card overflow-hidden p-0 shadow-sm transition-hover"
+                    style={{ cursor: 'pointer', border: '1px solid var(--border-color)' }}
+                    onClick={() => navigate(`/order/${order.ids[0]}`)}
+                    onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--brand-orange)'}
+                    onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--border-color)'}
+                >
                   
-                  {/* THANH TRÊN CÙNG: MÃ ĐƠN & GIÁ */}
-                  <div className="p-3 border-bottom d-flex justify-content-between align-items-center" style={{ borderColor: 'var(--border-color)', backgroundColor: 'rgba(255,255,255,0.02)' }}>
-                    <h5 className="text-danger fw-bold mb-0" style={{ letterSpacing: '1px' }}>
-                      {order.is_batch ? `📦 GHÉP-${order.ids[0]}` : `${order.id}`}
-                    </h5>
-                    <div className="d-flex align-items-center gap-2">
-                       <span className="text-warning fw-bold fs-5">{order.total_price?.toLocaleString() || order.price?.toLocaleString()}đ</span>
-                       <span className="text-muted" style={{fontSize: '12px'}}>🚚 Delivery</span>
+                  {/* THANH TRÊN CÙNG: MÃ ĐƠN & THU NHẬP TÀI XẾ */}
+                  <div className="p-3 border-bottom" style={{ borderColor: 'var(--border-color)', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                    <div className="d-flex justify-content-between align-items-center mb-1">
+                      <h5 className="text-danger fw-bold mb-0" style={{ letterSpacing: '1px' }}>
+                        {order.is_batch ? `📦 GHÉP-${order.ids[0]}` : `${order.id}`}
+                      </h5>
+                      <div className="d-flex align-items-center gap-2">
+                         <span className="text-warning fw-bold fs-6">
+                           🚚 {userInfo.role === 'driver_express' ? 'Express' : 'Delivery'}
+                         </span>
+                      </div>
+                    </div>
+                    {/* Thu nhập tài xế */}
+                    <div className="text-white fw-bold fs-5 mt-1">
+                        {driverEarnings.toLocaleString()}đ
                     </div>
                   </div>
                   
-                  {/* CHI TIẾT ĐIỂM LẤY / GIAO (MÔ PHỎNG SHOPEEFOOD) */}
+                  {/* CHI TIẾT ĐIỂM LẤY / GIAO */}
                   <div className="p-3 position-relative">
-                     {/* Thanh nối dọc */}
+                     {/* Thanh nối dọc mờ mờ */}
                      <div className="position-absolute" style={{ left: '23px', top: '32px', bottom: '45px', width: '2px', backgroundColor: 'var(--border-color)', zIndex: 1 }}></div>
                      
                      {/* ĐIỂM LẤY */}
@@ -256,12 +274,15 @@ export default function DriverDashboard({ userInfo }) {
                                   Lấy: <span className="text-white">{order.sender_name || (order.is_batch ? 'Nhiều điểm lấy' : 'Người gửi')}</span>
                                </div>
                            </div>
-                           <div className="text-white mb-2" style={{fontSize: '14.5px', lineHeight: '1.4'}}>
-                              {order.pickup_location || order.pickup || 'Xem chi tiết trong lộ trình'}
+                           <div className="text-white mb-2 fw-bold" style={{fontSize: '14.5px', lineHeight: '1.4'}}>
+                              {order.pickup_location || order.pickup_address || order.pickup || 'Xem chi tiết địa chỉ trong lộ trình...'}
                            </div>
-                           <Button size="sm" variant="outline-danger" className="fw-bold px-3 py-1" style={{ borderRadius: '4px' }} onClick={() => navigate(`/order/${order.ids[0]}`)}>
-                              Lấy ngay
-                           </Button>
+                           <div>
+                              {/* Label thay vì Button */}
+                              <span className="fw-bold px-2 py-1" style={{ color: '#FF4D4D', border: '1px solid #FF4D4D', borderRadius: '4px', fontSize: '12px', backgroundColor: 'rgba(255, 77, 77, 0.1)' }}>
+                                Lấy ngay
+                              </span>
+                           </div>
                         </div>
                      </div>
 
@@ -276,17 +297,25 @@ export default function DriverDashboard({ userInfo }) {
                                   Giao: <span className="text-white">{order.receiver_name || (order.is_batch ? 'Nhiều điểm giao' : 'Người nhận')}</span>
                                </div>
                            </div>
-                           <div className="text-white mb-2" style={{fontSize: '14.5px', lineHeight: '1.4'}}>
-                              {order.dropoff_location || order.dropoff || 'Xem chi tiết trong lộ trình'}
+                           <div className="text-white mb-2 fw-bold" style={{fontSize: '14.5px', lineHeight: '1.4'}}>
+                              {order.dropoff_location || order.dropoff_address || order.dropoff || 'Xem chi tiết địa chỉ trong lộ trình...'}
                            </div>
-                           <Button size="sm" variant="outline-success" className="fw-bold px-3 py-1" style={{ color: '#4ADE80', borderColor: '#4ADE80', borderRadius: '4px' }} onClick={() => navigate(`/order/${order.ids[0]}`)}>
-                              Giao ngay
-                           </Button>
+                           <div className="d-flex gap-2 align-items-center">
+                              {/* Label thay vì Button */}
+                              <span className="fw-bold px-2 py-1" style={{ color: '#4ADE80', border: '1px solid #4ADE80', borderRadius: '4px', fontSize: '12px', backgroundColor: 'rgba(74, 222, 128, 0.1)' }}>
+                                Giao ngay
+                              </span>
+                              
+                              {/* Khung số Km nhỏ gọn */}
+                              <span className="fw-bold px-2 py-1 text-muted" style={{ border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--bg-input)' }}>
+                                {order.distance ? `${order.distance} km` : '--- km'}
+                              </span>
+                           </div>
                         </div>
                      </div>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           )}
         </div>
