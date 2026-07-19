@@ -7,12 +7,9 @@ function Register() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('customer'); // Mặc định là khách hàng
-  
-  // --- STATE MỚI ĐƯỢC THÊM VÀO ---
+  const [role, setRole] = useState('customer'); 
   const [phone, setPhone] = useState('');
   const [licensePlate, setLicensePlate] = useState('');
-  
   const [message, setMessage] = useState('');
   const [isError, setIsError] = useState(false);
   const navigate = useNavigate();
@@ -22,106 +19,82 @@ function Register() {
     setMessage('');
     
     try {
-      // Bắn API Đăng ký sang FastAPI (Đã bổ sung phone và license_plate)
       await axios.post('https://datquang-backend.onrender.com/register', {
-        name: name,
-        email: email,
-        password: password,
-        role: role,
-        phone: phone,
-        license_plate: role.startsWith('driver') ? licensePlate : null // Chỉ gửi biển số nếu là tài xế
+        name: name, email: email, password: password, role: role, phone: phone,
+        license_plate: role.startsWith('driver') ? licensePlate : null 
       });
 
       setIsError(false);
-      setMessage('🎉 Đăng ký thành công! Đang chuyển hướng về đăng nhập...');
-      
-      // Tự động chuyển về trang Login sau 2 giây
-      setTimeout(() => {
-        navigate('/');
-      }, 2000);
+      setMessage('🎉 Đăng ký thành công! Đang chuyển hướng...');
+      setTimeout(() => { navigate('/'); }, 2000);
 
     } catch (error) {
       setIsError(true);
-      if (error.response && error.response.data) {
-        setMessage(`❌ ${error.response.data.detail}`); 
-      } else {
-        setMessage("❌ Không thể kết nối đến máy chủ!");
-      }
+      if (error.response && error.response.data) { setMessage(`❌ ${error.response.data.detail}`); } 
+      else { setMessage("❌ Không thể kết nối đến máy chủ!"); }
     }
   };
 
   return (
-    <Container className="d-flex align-items-center justify-content-center" style={{ minHeight: "100vh" }}>
+    <Container fluid className="d-flex align-items-center justify-content-center py-5" style={{ minHeight: "100vh", backgroundColor: 'var(--bg-main)' }}>
       <Row className="w-100">
-        <Col md={{ span: 6, offset: 3 }} lg={{ span: 4, offset: 4 }}>
-          <Card className="shadow border-top border-success border-4 my-4">
+        <Col md={{ span: 8, offset: 2 }} lg={{ span: 6, offset: 3 }} xl={{ span: 4, offset: 4 }}>
+          <Card className="logistics-card border-0 shadow-lg p-3" style={{ borderTop: '4px solid var(--brand-orange) !important' }}>
             <Card.Body>
-              <h3 className="text-center mb-4 text-success">Đăng ký tài khoản</h3>
+              <h3 className="text-center mb-4 text-white fw-bold tracking-wide">TẠO TÀI KHOẢN</h3>
               
-              {message && <Alert variant={isError ? "danger" : "success"}>{message}</Alert>}
+              {message && <Alert variant={isError ? "danger" : "success"} className="fw-bold bg-transparent" style={{ borderColor: isError ? '#FF4D4D' : '#4ADE80', color: isError ? '#FF4D4D' : '#4ADE80' }}>{message}</Alert>}
               
               <Form onSubmit={handleRegister}>
+                <Row className="g-3 mb-3">
+                  <Col md={6}>
+                    <Form.Group>
+                      <Form.Label className="text-muted fw-bold" style={{ fontSize: '12px' }}>HỌ VÀ TÊN</Form.Label>
+                      <Form.Control type="text" className="logistics-input" placeholder="Tên của bạn" value={name} onChange={(e) => setName(e.target.value)} required />
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group>
+                      <Form.Label className="text-muted fw-bold" style={{ fontSize: '12px' }}>SỐ ĐIỆN THOẠI</Form.Label>
+                      <Form.Control type="tel" className="logistics-input" placeholder="09xx..." value={phone} onChange={(e) => setPhone(e.target.value)} required />
+                    </Form.Group>
+                  </Col>
+                </Row>
+
                 <Form.Group className="mb-3">
-                  <Form.Label>Họ và Tên</Form.Label>
-                  <Form.Control type="text" placeholder="Nhập tên của bạn" value={name} onChange={(e) => setName(e.target.value)} required />
+                  <Form.Label className="text-muted fw-bold" style={{ fontSize: '12px' }}>EMAIL</Form.Label>
+                  <Form.Control type="email" className="logistics-input" placeholder="Nhập email..." value={email} onChange={(e) => setEmail(e.target.value)} required />
                 </Form.Group>
 
                 <Form.Group className="mb-3">
-                  <Form.Label>Email</Form.Label>
-                  <Form.Control type="email" placeholder="Nhập email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                  <Form.Label className="text-muted fw-bold" style={{ fontSize: '12px' }}>MẬT KHẨU</Form.Label>
+                  <Form.Control type="password" className="logistics-input" placeholder="Tạo mật khẩu an toàn..." value={password} onChange={(e) => setPassword(e.target.value)} required />
                 </Form.Group>
 
                 <Form.Group className="mb-3">
-                  <Form.Label>Mật khẩu</Form.Label>
-                  <Form.Control type="password" placeholder="Tạo mật khẩu" value={password} onChange={(e) => setPassword(e.target.value)} required />
-                </Form.Group>
-                
-                {/* --- Ô NHẬP SỐ ĐIỆN THOẠI (BẮT BUỘC CHUNG) --- */}
-                <Form.Group className="mb-3">
-                  <Form.Label>Số điện thoại liên lạc</Form.Label>
-                  <Form.Control 
-                    type="tel" 
-                    placeholder="Nhập số điện thoại..."
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    required 
-                  />
-                </Form.Group>
-
-                <Form.Group className="mb-3">
-                  <Form.Label>Bạn là ai?</Form.Label>
-                  <Form.Select value={role} onChange={(e) => {
+                  <Form.Label className="text-muted fw-bold" style={{ fontSize: '12px' }}>BẠN LÀ AI?</Form.Label>
+                  <Form.Select className="logistics-input fw-bold" value={role} onChange={(e) => {
                       setRole(e.target.value);
-                      // Nếu chuyển về khách hàng thì xóa trắng ô biển số xe để tránh rác dữ liệu
-                      if (!e.target.value.startsWith('driver')) {
-                          setLicensePlate('');
-                      }
+                      if (!e.target.value.startsWith('driver')) setLicensePlate('');
                   }}>
-                    <option value="customer">Khách hàng (Đặt giao hàng)</option>
-                    <option value="driver_express">Tài xế (Xe máy - Giao hàng nhanh)</option>
-                    <option value="driver_container">Tài xế (Xe đầu kéo - Container)</option>
+                    <option value="customer">Khách hàng (Cần giao hàng)</option>
+                    <option value="driver_express">Tài xế (Xe máy - Chở nhẹ)</option>
+                    <option value="driver_container">Tài xế (Đầu kéo - Container)</option>
                   </Form.Select>
                 </Form.Group>
 
-                {/* --- CHỈ HIỆN Ô NÀY NẾU CHỌN ROLE LÀ TÀI XẾ --- */}
                 {role.startsWith('driver') && (
-                  <Form.Group className="mb-4">
-                    <Form.Label className="text-danger fw-bold">Biển số phương tiện</Form.Label>
-                    <Form.Control 
-                      type="text" 
-                      placeholder="Ví dụ: 59X1-123.45"
-                      value={licensePlate}
-                      onChange={(e) => setLicensePlate(e.target.value)}
-                      required={role.startsWith('driver')} // Bắt buộc nhập nếu là tài xế
-                    />
+                  <Form.Group className="mb-4 p-3 rounded" style={{ backgroundColor: 'var(--brand-orange-dim)', border: '1px solid var(--brand-orange)' }}>
+                    <Form.Label className="fw-bold" style={{ color: 'var(--brand-orange)', fontSize: '12px' }}>BIỂN SỐ PHƯƠNG TIỆN</Form.Label>
+                    <Form.Control type="text" className="logistics-input text-uppercase fw-bold text-white" placeholder="VD: 51H-123.45" value={licensePlate} onChange={(e) => setLicensePlate(e.target.value)} required={role.startsWith('driver')} />
                   </Form.Group>
                 )}
 
-                <Button variant="success" type="submit" className="w-100 mb-3">Hoàn tất Đăng ký</Button>
+                <Button type="submit" className="btn-orange w-100 mt-2 mb-4 py-3 fs-5 fw-bold tracking-wide">ĐĂNG KÝ NGAY</Button>
                 
-                <div className="text-center">
-                  <small className="text-muted">
-                    Đã có tài khoản? <span style={{ cursor: 'pointer', color: '#0d6efd', textDecoration: 'underline' }} onClick={() => navigate('/')}>Đăng nhập ngay</span>
+                <div className="text-center border-top pt-3" style={{ borderColor: 'var(--border-color)' }}>
+                  <small className="text-muted fw-bold">
+                    Đã có tài khoản? <span style={{ cursor: 'pointer', color: 'var(--brand-orange)' }} onClick={() => navigate('/')}>Đăng nhập ngay</span>
                   </small>
                 </div>
               </Form>

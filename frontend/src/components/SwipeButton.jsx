@@ -33,13 +33,13 @@ export default function SwipeButton({ text, colorClass, onComplete, isLoading })
   useEffect(() => { if (!isLoading) setLeft(0); }, [isLoading]);
 
   return (
-    <div ref={sliderRef} className={`position-relative rounded-pill bg-white border border-${colorClass} shadow-sm mt-3`} style={{ height: '52px', touchAction: 'none', userSelect: 'none', overflow: 'hidden' }} onMouseMove={handleMove} onMouseUp={handleUp} onMouseLeave={handleUp} onTouchMove={handleMove} onTouchEnd={handleUp}>
+    <div ref={sliderRef} className={`position-relative rounded-pill border mt-3`} style={{ height: '54px', touchAction: 'none', userSelect: 'none', overflow: 'hidden', backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color) !important' }} onMouseMove={handleMove} onMouseUp={handleUp} onMouseLeave={handleUp} onTouchMove={handleMove} onTouchEnd={handleUp}>
       <div className={`position-absolute h-100 bg-${colorClass}`} style={{ width: `${left + 25}px`, opacity: 0.15, transition: isDragging ? 'none' : 'width 0.3s' }} />
-      <div className="position-absolute w-100 h-100 d-flex justify-content-center align-items-center fw-bold" style={{ color: '#6c757d', zIndex: 1, fontSize: '15px' }}>
+      <div className="position-absolute w-100 h-100 d-flex justify-content-center align-items-center fw-bold" style={{ color: 'var(--text-muted)', zIndex: 1, fontSize: '14px', letterSpacing: '0.5px' }}>
          <span style={{ opacity: left > 20 ? 1 - left/(sliderRef.current?.getBoundingClientRect().width || 1) : 1 }}>{text}</span>
       </div>
-      <div className={`position-absolute h-100 rounded-pill d-flex justify-content-center align-items-center bg-${colorClass} text-white fw-bold shadow`} style={{ width: '50px', left: `${left}px`, transition: isDragging ? 'none' : 'left 0.3s', zIndex: 2, cursor: isLoading ? 'default' : 'grab' }} onMouseDown={handleDown} onTouchStart={handleDown}>
-        {isLoading ? <span className="spinner-border spinner-border-sm" /> : '>>'}
+      <div className={`position-absolute h-100 rounded-pill d-flex justify-content-center align-items-center bg-${colorClass} text-white fw-bold shadow-lg`} style={{ width: '54px', left: `${left}px`, transition: isDragging ? 'none' : 'left 0.3s', zIndex: 2, cursor: isLoading ? 'default' : 'grab' }} onMouseDown={handleDown} onTouchStart={handleDown}>
+        {isLoading ? <span className="spinner-border spinner-border-sm" /> : '>>>'}
       </div>
     </div>
   );
