@@ -79,6 +79,7 @@ function Register() {
                   }}>
                     <option value="customer">Khách hàng (Cần giao hàng)</option>
                     <option value="driver_express">Tài xế (Xe máy - Chở nhẹ)</option>
+                    <option value="driver_truck">Tài xế (Xe tải nhẹ 1.5 tấn)</option>
                     <option value="driver_container">Tài xế (Đầu kéo - Container)</option>
                   </Form.Select>
                 </Form.Group>

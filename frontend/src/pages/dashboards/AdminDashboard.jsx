@@ -393,7 +393,7 @@ export default function AdminDashboard({ userInfo }) {
                                 </td>
                                 <td>
                                 <Badge bg={user.role.startsWith('driver') ? 'info' : 'primary'} className="px-3 py-2 text-dark fw-bold">
-                                    {user.role === 'driver_express' ? 'Tài xế (Xe máy)' : user.role === 'driver_container' ? 'Tài xế (Container)' : 'Khách hàng'}
+                                    {user.role === 'driver_express' ? 'Tài xế (Xe máy)' : user.role === 'driver_truck' ? 'Tài xế (Xe tải)' : user.role === 'driver_container' ? 'Tài xế (Container)' : 'Khách hàng'}
                                 </Badge>
                                 </td>
                                 <td className="text-center">

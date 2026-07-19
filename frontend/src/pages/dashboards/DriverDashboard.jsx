@@ -153,7 +153,7 @@ export default function DriverDashboard({ userInfo }) {
               <h5 className="mb-1 fw-bold text-white">{userInfo.name}</h5>
               <div className="d-flex align-items-center gap-2">
                 <Badge bg="dark" className="border border-secondary text-white">
-                  {userInfo.role === 'driver_express' ? 'XE MÁY' : 'CONTAINER'}
+                  {userInfo.role === 'driver_express' ? 'XE MÁY' : userInfo.role === 'driver_truck' ? 'XE TẢI' : 'CONTAINER'}
                 </Badge>
                 <Badge bg="success" className="px-2 cursor-pointer" onClick={() => navigate('/wallet')}>💰 {userBalance.toLocaleString()}đ</Badge>
               </div>
@@ -259,7 +259,7 @@ export default function DriverDashboard({ userInfo }) {
                       </h5>
                       <div className="d-flex align-items-center gap-2">
                          <span className="text-warning fw-bold fs-6">
-                           🚚 {userInfo.role === 'driver_express' ? 'Express' : 'Delivery'}
+                           🚚 {userInfo.role === 'driver_express' ? 'Express' : userInfo.role === 'driver_truck' ? 'Truck' : 'Container'}
                          </span>
                       </div>
                     </div>

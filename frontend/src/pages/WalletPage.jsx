@@ -276,7 +276,7 @@ function WalletPage() {
                           <td className="py-3 fw-bold text-white">{driver.name}</td>
                           <td className="py-3">
                             <Badge bg="dark" className="border border-secondary px-2 py-1 text-white">
-                              {driver.role === 'driver_express' ? 'XE MÁY' : 'CONTAINER'}
+                              {driver.role === 'driver_express' ? 'XE MÁY' : driver.role === 'driver_truck' ? 'XE TẢI' : 'CONTAINER'}
                             </Badge>
                           </td>
                           <td className="py-3 text-end"><strong className="text-success fs-6">{driver.balance.toLocaleString()} đ</strong></td>
