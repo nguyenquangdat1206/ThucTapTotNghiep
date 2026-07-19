@@ -36,12 +36,28 @@ function Register() {
   };
 
   return (
-    <Container fluid className="d-flex align-items-center justify-content-center py-5" style={{ minHeight: "100vh", backgroundColor: 'var(--bg-main)' }}>
+    <Container fluid className="d-flex align-items-center justify-content-center py-5" 
+               style={{ 
+                 minHeight: "100vh", 
+                 // Phủ một lớp màu tối (gradient) lên trên ảnh nền để form đăng ký nổi bật hơn
+                 backgroundImage: `linear-gradient(rgba(11, 19, 14, 0.6), rgba(11, 19, 14, 0.8)), url('/bg-login.jpg')`,
+                 backgroundSize: 'cover',
+                 backgroundPosition: 'center',
+                 backgroundRepeat: 'no-repeat'
+               }}>
       <Row className="w-100">
         <Col md={{ span: 8, offset: 2 }} lg={{ span: 6, offset: 3 }} xl={{ span: 4, offset: 4 }}>
-          <Card className="logistics-card border-0 shadow-lg p-3" style={{ borderTop: '4px solid var(--brand-orange) !important' }}>
+          {/* Form đăng ký dạng kính mờ (Glassmorphism) trên nền tối */}
+          <Card className="border-0 p-3" 
+                style={{ 
+                  boxShadow: '0 15px 35px rgba(0,0,0,0.6)', 
+                  backgroundColor: 'rgba(11, 19, 14, 0.75)', // Nền đen trong suốt 75%
+                  backdropFilter: 'blur(10px)', // Hiệu ứng làm mờ cảnh phía sau
+                  border: '1px solid rgba(255, 102, 51, 0.3)', // Viền cam siêu mỏng
+                  borderRadius: '16px'
+                }}>
             <Card.Body>
-              <h3 className="text-center mb-4 text-white fw-bold tracking-wide">TẠO TÀI KHOẢN</h3>
+              <h3 className="text-center mb-4 text-white fw-bold tracking-wide" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.8)' }}>TẠO TÀI KHOẢN</h3>
               
               {message && <Alert variant={isError ? "danger" : "success"} className="fw-bold bg-transparent" style={{ borderColor: isError ? '#FF4D4D' : '#4ADE80', color: isError ? '#FF4D4D' : '#4ADE80' }}>{message}</Alert>}
               
@@ -49,30 +65,30 @@ function Register() {
                 <Row className="g-3 mb-3">
                   <Col md={6}>
                     <Form.Group>
-                      <Form.Label className="text-muted fw-bold" style={{ fontSize: '12px' }}>HỌ VÀ TÊN</Form.Label>
+                      <Form.Label className="text-white fw-bold" style={{ fontSize: '12px' }}>HỌ VÀ TÊN</Form.Label>
                       <Form.Control type="text" className="logistics-input" placeholder="Tên của bạn" value={name} onChange={(e) => setName(e.target.value)} required />
                     </Form.Group>
                   </Col>
                   <Col md={6}>
                     <Form.Group>
-                      <Form.Label className="text-muted fw-bold" style={{ fontSize: '12px' }}>SỐ ĐIỆN THOẠI</Form.Label>
+                      <Form.Label className="text-white fw-bold" style={{ fontSize: '12px' }}>SỐ ĐIỆN THOẠI</Form.Label>
                       <Form.Control type="tel" className="logistics-input" placeholder="09xx..." value={phone} onChange={(e) => setPhone(e.target.value)} required />
                     </Form.Group>
                   </Col>
                 </Row>
 
                 <Form.Group className="mb-3">
-                  <Form.Label className="text-muted fw-bold" style={{ fontSize: '12px' }}>EMAIL</Form.Label>
+                  <Form.Label className="text-white fw-bold" style={{ fontSize: '12px' }}>EMAIL</Form.Label>
                   <Form.Control type="email" className="logistics-input" placeholder="Nhập email..." value={email} onChange={(e) => setEmail(e.target.value)} required />
                 </Form.Group>
 
                 <Form.Group className="mb-3">
-                  <Form.Label className="text-muted fw-bold" style={{ fontSize: '12px' }}>MẬT KHẨU</Form.Label>
+                  <Form.Label className="text-white fw-bold" style={{ fontSize: '12px' }}>MẬT KHẨU</Form.Label>
                   <Form.Control type="password" className="logistics-input" placeholder="Tạo mật khẩu an toàn..." value={password} onChange={(e) => setPassword(e.target.value)} required />
                 </Form.Group>
 
                 <Form.Group className="mb-3">
-                  <Form.Label className="text-muted fw-bold" style={{ fontSize: '12px' }}>BẠN LÀ AI?</Form.Label>
+                  <Form.Label className="text-white fw-bold" style={{ fontSize: '12px' }}>BẠN LÀ AI?</Form.Label>
                   <Form.Select className="logistics-input fw-bold" value={role} onChange={(e) => {
                       setRole(e.target.value);
                       if (!e.target.value.startsWith('driver')) setLicensePlate('');
@@ -85,16 +101,16 @@ function Register() {
                 </Form.Group>
 
                 {role.startsWith('driver') && (
-                  <Form.Group className="mb-4 p-3 rounded" style={{ backgroundColor: 'var(--brand-orange-dim)', border: '1px solid var(--brand-orange)' }}>
+                  <Form.Group className="mb-4 p-3 rounded" style={{ backgroundColor: 'rgba(255, 102, 51, 0.1)', border: '1px solid var(--brand-orange)' }}>
                     <Form.Label className="fw-bold" style={{ color: 'var(--brand-orange)', fontSize: '12px' }}>BIỂN SỐ PHƯƠNG TIỆN</Form.Label>
                     <Form.Control type="text" className="logistics-input text-uppercase fw-bold text-white" placeholder="VD: 51H-123.45" value={licensePlate} onChange={(e) => setLicensePlate(e.target.value)} required={role.startsWith('driver')} />
                   </Form.Group>
                 )}
 
-                <Button type="submit" className="btn-orange w-100 mt-2 mb-4 py-3 fs-5 fw-bold tracking-wide">ĐĂNG KÝ NGAY</Button>
+                <Button type="submit" className="btn-orange w-100 mt-2 mb-4 py-3 fs-5 fw-bold tracking-wide shadow">ĐĂNG KÝ NGAY</Button>
                 
-                <div className="text-center border-top pt-3" style={{ borderColor: 'var(--border-color)' }}>
-                  <small className="text-muted fw-bold">
+                <div className="text-center border-top pt-3" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
+                  <small className="text-light fw-bold">
                     Đã có tài khoản? <span style={{ cursor: 'pointer', color: 'var(--brand-orange)' }} onClick={() => navigate('/')}>Đăng nhập ngay</span>
                   </small>
                 </div>
