@@ -69,12 +69,13 @@ export default function CustomerDashboard({ userInfo }) {
     switch(status) {
       case 'pending': return <Badge bg="secondary" className="px-3 py-2">Đang tìm tài xế</Badge>;
       case 'accepted': return <Badge bg="info" className="px-3 py-2 text-dark">Tài xế đang đến</Badge>;
-      case 'arrived_pickup': return <Badge bg="primary" className="px-3 py-2">Đã tới điểm lấy</Badge>; /* <-- ĐÃ BỔ SUNG DÒNG NÀY */
+      case 'arrived_pickup': return <Badge bg="primary" className="px-3 py-2">Đã tới điểm lấy</Badge>; 
       case 'picking_up': return <Badge bg="warning" className="px-3 py-2 text-dark">Đã lấy hàng</Badge>;
       case 'delivering': return <Badge style={{backgroundColor: 'var(--brand-orange)'}} className="px-3 py-2 text-white">Đang giao hàng</Badge>;
       case 'completed': return <Badge bg="success" className="px-3 py-2">Đã hoàn thành</Badge>;
       case 'cancel_requested': return <Badge bg="danger" className="px-3 py-2">Yêu cầu hủy</Badge>;
       case 'cancelled': return <Badge bg="dark" className="px-3 py-2 border border-secondary">Đã hủy</Badge>;
+      case 'cancelled_timeout': return <Badge bg="dark" className="px-3 py-2 border border-warning text-warning">Hủy (Quá thời gian)</Badge>;
       default: return <Badge bg="light" className="px-3 py-2 text-dark">{status}</Badge>;
     }
   };

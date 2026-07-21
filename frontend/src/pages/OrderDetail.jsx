@@ -210,6 +210,7 @@ export default function OrderDetail() {
       case 'completed': return <Badge bg="success" className="px-2 py-1">Đã hoàn thành</Badge>;
       case 'cancel_requested': return <Badge bg="danger" className="px-2 py-1">Yêu cầu hủy</Badge>;
       case 'cancelled': return <Badge bg="dark" className="px-2 py-1 border border-secondary">Đã hủy</Badge>;
+      case 'cancelled_timeout': return <Badge bg="dark" className="px-2 py-1 border border-warning text-warning">Hủy (Quá thời gian)</Badge>;
       default: return <Badge bg="light" className="px-2 py-1 text-dark">{status}</Badge>;
     }
   };
