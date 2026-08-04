@@ -12,7 +12,6 @@ import L from 'leaflet';
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 
-// Fix lỗi mất icon mặc định của Leaflet khi dùng chung với React
 let DefaultIcon = L.icon({
     iconUrl: icon,
     shadowUrl: iconShadow,
@@ -30,14 +29,12 @@ export default function DriverDashboard({ userInfo }) {
   const [actionMessage, setActionMessage] = useState('');
   const [userBalance, setUserBalance] = useState(0); 
 
-  // --- STATE TỌA ĐỘ GPS ---
-  // Mặc định set ở trung tâm TP.HCM, sẽ tự cập nhật khi lấy được GPS
+  // --- STATE ĐIỀU HƯỚNG TABS ---
+  const [mainTab, setMainTab] = useState('radar'); // Tab chính: 'radar' hoặc 'my_trips'
+  const [driverTab, setDriverTab] = useState('active'); // Tab phụ của my_trips: 'active' hoặc 'history'
+
   const [driverLocation, setDriverLocation] = useState({ lat: 10.762622, lng: 106.660172 });
 
-  // --- STATE CHIA TAB LỊCH SỬ ---
-  const [driverTab, setDriverTab] = useState('active');
-
-  // --- STATE CHO POPUP NỔ ĐƠN TỰ ĐỘNG ---
   const [showIncomingPopup, setShowIncomingPopup] = useState(false);
   const [incomingOrder, setIncomingOrder] = useState(null);
   
@@ -56,7 +53,6 @@ export default function DriverDashboard({ userInfo }) {
 
   useEffect(() => { isReadyRef.current = isReady; }, [isReady]);
 
-  // EFFECT: Lấy tọa độ GPS thật của thiết bị
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -66,9 +62,7 @@ export default function DriverDashboard({ userInfo }) {
             lng: position.coords.longitude
           });
         },
-        (error) => {
-          console.error("Lỗi lấy vị trí GPS: ", error);
-        },
+        (error) => { console.error("Lỗi lấy vị trí GPS: ", error); },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     }
@@ -135,9 +129,7 @@ export default function DriverDashboard({ userInfo }) {
       ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
         if (data.event === 'user_banned') { stopAlertSound(); localStorage.removeItem('userInfo'); navigate('/'); return; }
-        if (data.event === 'status_changed' || data.event === 'urgent_order_alert') {
-             fetchData(false); 
-        }
+        if (data.event === 'status_changed' || data.event === 'urgent_order_alert') { fetchData(false); }
       };
       ws.onclose = () => { setTimeout(connectWebSocket, 3000); };
     };
@@ -163,6 +155,8 @@ export default function DriverDashboard({ userInfo }) {
     try {
       await axios.put(`https://datquang-backend.onrender.com/orders/${orderId}/accept?driver_id=${userInfo.user_id}`);
       setActionMessage(`🎉 Nhận thành công đơn!`); 
+      setMainTab('my_trips'); // Tự động chuyển qua tab Chuyến đi của tôi khi nhận đơn
+      setDriverTab('active');
       fetchData(true); 
     } catch (error) { setActionMessage(`❌ Lỗi hoặc đơn đã bị tài xế khác nhận!`); }
   };
@@ -355,140 +349,157 @@ export default function DriverDashboard({ userInfo }) {
             {!isReady && <small className="text-danger d-block mt-3 fw-bold">Hệ thống phân đơn Radar đang tạm dừng!</small>}
         </div>
 
-        {/* BẢN ĐỒ RADAR 1.5KM (Chỉ hiện khi Online) */}
-        {isReady && (
-          <div className="logistics-card p-3 mb-4" style={{ border: '1px solid var(--border-color)', borderRadius: '16px', overflow: 'hidden' }}>
-            <h6 className="fw-bold text-white mb-3 d-flex align-items-center gap-2">
-              <span className="fs-5" style={{ animation: 'pulse 2s infinite' }}>📡</span> RADAR QUÉT ĐƠN (1.5KM)
-            </h6>
-            
-            <div style={{ height: '250px', width: '100%', borderRadius: '12px', overflow: 'hidden' }}>
-              <MapContainer 
-                key={`${driverLocation.lat}-${driverLocation.lng}`} // Ép render lại khi có GPS mới
-                center={[driverLocation.lat, driverLocation.lng]} 
-                zoom={14} 
-                style={{ height: '100%', width: '100%' }}
-                zoomControl={false}
-              >
-                <TileLayer
-                  url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                  attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-                />
-                
-                <Marker position={[driverLocation.lat, driverLocation.lng]}>
-                  <Popup className="fw-bold text-center text-dark">
-                    Vị trí hiện tại của bạn <br/> Đang phát sóng tìm đơn...
-                  </Popup>
-                </Marker>
-                
-                <Circle 
-                  center={[driverLocation.lat, driverLocation.lng]} 
-                  radius={1500} 
-                  pathOptions={{ 
-                    color: '#FF6633', 
-                    fillColor: '#FF6633', 
-                    fillOpacity: 0.15, 
-                    weight: 2, 
-                    dashArray: '5, 5' 
-                  }} 
-                />
-              </MapContainer>
-            </div>
-          </div>
-        )}
+        {/* --- TABS ĐIỀU HƯỚNG CHÍNH --- */}
+        <div className="logistics-card mb-4 p-2 border-0">
+            <Nav variant="pills" className="justify-content-center gap-2" activeKey={mainTab} onSelect={(k) => setMainTab(k)}>
+              <Nav.Item>
+                <Nav.Link eventKey="radar" className={`fw-bold text-uppercase px-4 ${mainTab === 'radar' ? 'btn-orange text-white' : 'text-muted'}`} style={{ borderRadius: '12px' }}>
+                  📡 Bắt Đơn Mới
+                </Nav.Link>
+              </Nav.Item>
+              <Nav.Item>
+                <Nav.Link eventKey="my_trips" className={`fw-bold text-uppercase px-4 ${mainTab === 'my_trips' ? 'btn-orange text-white' : 'text-muted'}`} style={{ borderRadius: '12px' }}>
+                  🏍️ Chuyến Của Tôi
+                </Nav.Link>
+              </Nav.Item>
+            </Nav>
+        </div>
+        {/* ----------------------------- */}
         
         {actionMessage && <Alert variant={actionMessage.includes('❌') ? 'danger' : 'success'} className="logistics-card border-0 fw-bold">{actionMessage}</Alert>}
         
-        {/* RADAR QUÉT ĐƠN HÀNG */}
-        <div className="mt-5">
-          <h5 className="fw-bold text-white mb-3 d-flex align-items-center gap-2">
-             <span className="fs-5">📡</span> ĐƠN HÀNG MỚI XUNG QUANH
-          </h5>
-          
-          {!isReady ? (
-            <div className="logistics-card p-5 text-center text-muted fw-bold border-dashed" style={{ borderStyle: 'dashed', borderColor: 'var(--border-color) !important' }}>
-              Vui lòng bật trạng thái Đang Nhận Đơn để quét chuyến.
-            </div>
-          ) : groupedPendingOrders.length === 0 ? (
-            <div className="logistics-card p-5 text-center text-muted fw-bold">
-              Chưa có tín hiệu đơn hàng mới...
-            </div>
-          ) : (
-            <div className="d-flex flex-column gap-3">
-              {groupedPendingOrders.map((order, idx) => (
-                <div key={idx} className="logistics-card p-4" style={{ borderLeft: '4px solid #4ADE80' }}>
-                  <div className="d-flex justify-content-between align-items-center flex-wrap">
-                    <div className="mb-3 mb-md-0" style={{ maxWidth: '600px' }}>
-                      <h6 className="fw-bold text-white mb-3">
-                        {order.is_batch ? <Badge bg="danger" className="me-2 px-2 py-1">📦 GHÉP BATCH</Badge> : <span className="text-muted me-2">Mã: #{order.id}</span>}
-                      </h6>
-                      <div className="text-muted fs-6">
-                        {order.is_batch ? (
-                          <span className="fw-bold text-white">📍 Chuyến đi nhiều trạm (Ghép lộ trình)</span>
-                        ) : (
-                          <>
-                            <div className="mb-2">
-                               <span className="d-inline-block text-center me-2" style={{ width: '20px' }}>📍</span>
-                               <span className="text-white">{order.pickup_location || order.pickup}</span>
-                            </div>
-                            <div>
-                               <span className="d-inline-block text-center me-2" style={{ width: '20px' }}>🚩</span>
-                               <span className="text-white">{order.dropoff_location || order.dropoff}</span>
-                            </div>
-                          </>
-                        )}
+        {/* ========================================= */}
+        {/* TAB 1: BẢN ĐỒ RADAR VÀ ĐƠN HÀNG XUNG QUANH */}
+        {/* ========================================= */}
+        {mainTab === 'radar' && (
+          <div className="mt-2">
+            {/* BẢN ĐỒ RADAR 1.5KM (Chỉ hiện khi Online) */}
+            {isReady && (
+              <div className="logistics-card p-3 mb-4" style={{ border: '1px solid var(--border-color)', borderRadius: '16px', overflow: 'hidden' }}>
+                <h6 className="fw-bold text-white mb-3 d-flex align-items-center gap-2">
+                  <span className="fs-5" style={{ animation: 'pulse 2s infinite' }}>📡</span> RADAR QUÉT ĐƠN (1.5KM)
+                </h6>
+                
+                <div style={{ height: '250px', width: '100%', borderRadius: '12px', overflow: 'hidden' }}>
+                  <MapContainer 
+                    key={`${driverLocation.lat}-${driverLocation.lng}`}
+                    center={[driverLocation.lat, driverLocation.lng]} 
+                    zoom={14} 
+                    style={{ height: '100%', width: '100%' }}
+                    zoomControl={false}
+                  >
+                    <TileLayer
+                      url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                      attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+                    />
+                    <Marker position={[driverLocation.lat, driverLocation.lng]}>
+                      <Popup className="fw-bold text-center text-dark">
+                        Vị trí hiện tại của bạn <br/> Đang phát sóng tìm đơn...
+                      </Popup>
+                    </Marker>
+                    <Circle 
+                      center={[driverLocation.lat, driverLocation.lng]} 
+                      radius={1500} 
+                      pathOptions={{ color: '#FF6633', fillColor: '#FF6633', fillOpacity: 0.15, weight: 2, dashArray: '5, 5' }} 
+                    />
+                  </MapContainer>
+                </div>
+              </div>
+            )}
+            
+            <h5 className="fw-bold text-white mb-3 d-flex align-items-center gap-2">
+               <span className="fs-5">📡</span> ĐƠN HÀNG MỚI XUNG QUANH
+            </h5>
+            
+            {!isReady ? (
+              <div className="logistics-card p-5 text-center text-muted fw-bold border-dashed" style={{ borderStyle: 'dashed', borderColor: 'var(--border-color) !important' }}>
+                Vui lòng bật trạng thái Đang Nhận Đơn để quét chuyến.
+              </div>
+            ) : groupedPendingOrders.length === 0 ? (
+              <div className="logistics-card p-5 text-center text-muted fw-bold">
+                Chưa có tín hiệu đơn hàng mới...
+              </div>
+            ) : (
+              <div className="d-flex flex-column gap-3">
+                {groupedPendingOrders.map((order, idx) => (
+                  <div key={idx} className="logistics-card p-4" style={{ borderLeft: '4px solid #4ADE80' }}>
+                    <div className="d-flex justify-content-between align-items-center flex-wrap">
+                      <div className="mb-3 mb-md-0" style={{ maxWidth: '600px' }}>
+                        <h6 className="fw-bold text-white mb-3">
+                          {order.is_batch ? <Badge bg="danger" className="me-2 px-2 py-1">📦 GHÉP BATCH</Badge> : <span className="text-muted me-2">Mã: #{order.id}</span>}
+                        </h6>
+                        <div className="text-muted fs-6">
+                          {order.is_batch ? (
+                            <span className="fw-bold text-white">📍 Chuyến đi nhiều trạm (Ghép lộ trình)</span>
+                          ) : (
+                            <>
+                              <div className="mb-2">
+                                 <span className="d-inline-block text-center me-2" style={{ width: '20px' }}>📍</span>
+                                 <span className="text-white">{order.pickup_location || order.pickup}</span>
+                              </div>
+                              <div>
+                                 <span className="d-inline-block text-center me-2" style={{ width: '20px' }}>🚩</span>
+                                 <span className="text-white">{order.dropoff_location || order.dropoff}</span>
+                              </div>
+                            </>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    <div className="text-end mt-3 mt-md-0">
-                      <h3 className="fw-bold mb-3" style={{ color: '#4ADE80' }}>{order.calculated_price.toLocaleString()} đ</h3>
-                      <div className="d-flex gap-2 justify-content-end">
-                          <Button variant="outline-light" style={{borderColor: 'var(--border-color)'}} onClick={() => navigate(`/order/${order.ids[0]}`)}>Chi tiết</Button>
-                          <Button className="btn-orange px-4 fw-bold" onClick={() => handleAcceptOrder(order.ids[0])}>🤝 CHỐT ĐƠN</Button>
+                      <div className="text-end mt-3 mt-md-0">
+                        <h3 className="fw-bold mb-3" style={{ color: '#4ADE80' }}>{order.calculated_price.toLocaleString()} đ</h3>
+                        <div className="d-flex gap-2 justify-content-end">
+                            <Button variant="outline-light" style={{borderColor: 'var(--border-color)'}} onClick={() => navigate(`/order/${order.ids[0]}`)}>Chi tiết</Button>
+                            <Button className="btn-orange px-4 fw-bold" onClick={() => handleAcceptOrder(order.ids[0])}>🤝 CHỐT ĐƠN</Button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* KHU VỰC TABS CHUYẾN ĐI (CHIA ĐANG CHẠY & LỊCH SỬ) */}
-          <div className="d-flex justify-content-between align-items-center mt-5 mb-3">
-            <h5 className="fw-bold text-white mb-0 d-flex align-items-center gap-2">
-               <span className="fs-5">🏍️</span> CHUYẾN ĐI CỦA TÔI
-            </h5>
-            <Nav variant="pills" className="gap-2" activeKey={driverTab} onSelect={(k) => setDriverTab(k)}>
-              <Nav.Item>
-                <Nav.Link eventKey="active" className={`fw-bold px-3 py-1 ${driverTab === 'active' ? 'btn-orange text-white' : 'text-muted border'}`} style={{ borderRadius: '20px', borderColor: 'var(--border-color)', fontSize: '13px' }}>Đang chạy</Nav.Link>
-              </Nav.Item>
-              <Nav.Item>
-                <Nav.Link eventKey="history" className={`fw-bold px-3 py-1 ${driverTab === 'history' ? 'btn-orange text-white' : 'text-muted border'}`} style={{ borderRadius: '20px', borderColor: 'var(--border-color)', fontSize: '13px' }}>Lịch sử</Nav.Link>
-              </Nav.Item>
-            </Nav>
+                ))}
+              </div>
+            )}
           </div>
-          
-          {/* RENDER DỮ LIỆU DỰA THEO TAB */}
-          {driverTab === 'active' && (
-             activeMyOrders.length === 0 ? (
-               <div className="logistics-card p-4 text-center text-muted fw-bold">Bạn chưa nhận chuyến xe nào.</div>
-             ) : (
-               <div className="d-flex flex-column gap-3">
-                 {activeMyOrders.map((order, idx) => renderOrderCard(order, false))}
-               </div>
-             )
-          )}
+        )}
 
-          {driverTab === 'history' && (
-             historyMyOrders.length === 0 ? (
-               <div className="logistics-card p-4 text-center text-muted fw-bold">Chưa có dữ liệu lịch sử chuyến đi.</div>
-             ) : (
-               <div className="d-flex flex-column gap-3">
-                 {historyMyOrders.map((order, idx) => renderOrderCard(order, true))}
-               </div>
-             )
-          )}
+        {/* ========================================= */}
+        {/* TAB 2: CHUYẾN ĐI CỦA TÔI (Đang chạy & Lịch sử) */}
+        {/* ========================================= */}
+        {mainTab === 'my_trips' && (
+          <div className="mt-2">
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <h5 className="fw-bold text-white mb-0 d-flex align-items-center gap-2">
+                 <span className="fs-5">🏍️</span> QUẢN LÝ CHUYẾN ĐI
+              </h5>
+              <Nav variant="pills" className="gap-2" activeKey={driverTab} onSelect={(k) => setDriverTab(k)}>
+                <Nav.Item>
+                  <Nav.Link eventKey="active" className={`fw-bold px-3 py-1 ${driverTab === 'active' ? 'btn-orange text-white' : 'text-muted border'}`} style={{ borderRadius: '20px', borderColor: 'var(--border-color)', fontSize: '13px' }}>Đang chạy</Nav.Link>
+                </Nav.Item>
+                <Nav.Item>
+                  <Nav.Link eventKey="history" className={`fw-bold px-3 py-1 ${driverTab === 'history' ? 'btn-orange text-white' : 'text-muted border'}`} style={{ borderRadius: '20px', borderColor: 'var(--border-color)', fontSize: '13px' }}>Lịch sử</Nav.Link>
+                </Nav.Item>
+              </Nav>
+            </div>
+            
+            {driverTab === 'active' && (
+               activeMyOrders.length === 0 ? (
+                 <div className="logistics-card p-4 text-center text-muted fw-bold">Bạn chưa nhận chuyến xe nào.</div>
+               ) : (
+                 <div className="d-flex flex-column gap-3">
+                   {activeMyOrders.map((order, idx) => renderOrderCard(order, false))}
+                 </div>
+               )
+            )}
 
-        </div>
+            {driverTab === 'history' && (
+               historyMyOrders.length === 0 ? (
+                 <div className="logistics-card p-4 text-center text-muted fw-bold">Chưa có dữ liệu lịch sử chuyến đi.</div>
+               ) : (
+                 <div className="d-flex flex-column gap-3">
+                   {historyMyOrders.map((order, idx) => renderOrderCard(order, true))}
+                 </div>
+               )
+            )}
+          </div>
+        )}
 
         {/* MODAL CẬP NHẬT HỒ SƠ */}
         <Modal show={showProfileModal} onHide={() => setShowProfileModal(false)} centered contentClassName="logistics-card border-0">
