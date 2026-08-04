@@ -5,6 +5,23 @@ import axios from 'axios';
 import DashboardSkeleton from '../../components/DashboardSkeleton';
 import SupportWidget from '../../components/SupportWidget';
 
+// --- BỔ SUNG LEAFLET MAP ---
+import 'leaflet/dist/leaflet.css';
+import { MapContainer, TileLayer, Marker, Circle, Popup } from 'react-leaflet';
+import L from 'leaflet';
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+
+// Fix lỗi mất icon mặc định của Leaflet khi dùng chung với React
+let DefaultIcon = L.icon({
+    iconUrl: icon,
+    shadowUrl: iconShadow,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41]
+});
+L.Marker.prototype.options.icon = DefaultIcon;
+// ---------------------------
+
 export default function DriverDashboard({ userInfo }) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -12,6 +29,10 @@ export default function DriverDashboard({ userInfo }) {
   const [myOrders, setMyOrders] = useState([]); 
   const [actionMessage, setActionMessage] = useState('');
   const [userBalance, setUserBalance] = useState(0); 
+
+  // --- STATE TỌA ĐỘ GPS ---
+  // Mặc định set ở trung tâm TP.HCM, sẽ tự cập nhật khi lấy được GPS
+  const [driverLocation, setDriverLocation] = useState({ lat: 10.762622, lng: 106.660172 });
 
   // --- STATE CHIA TAB LỊCH SỬ ---
   const [driverTab, setDriverTab] = useState('active');
@@ -34,6 +55,24 @@ export default function DriverDashboard({ userInfo }) {
   const audioRef = useRef(null);
 
   useEffect(() => { isReadyRef.current = isReady; }, [isReady]);
+
+  // EFFECT: Lấy tọa độ GPS thật của thiết bị
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setDriverLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+        },
+        (error) => {
+          console.error("Lỗi lấy vị trí GPS: ", error);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    }
+  }, []);
 
   const fetchData = async (isFirstLoad = false) => {
     try {
@@ -159,7 +198,6 @@ export default function DriverDashboard({ userInfo }) {
     }
   };
 
-  // Gom nhóm đơn chờ nhận
   const groupedPendingOrders = Object.values(pendingOrders.reduce((acc, order) => {
     const itemPrice = getSafePrice(order);
     if (order.batch_id) {
@@ -170,7 +208,6 @@ export default function DriverDashboard({ userInfo }) {
     return acc;
   }, {}));
 
-  // Gom nhóm chuyến đi của tôi
   const groupedMyOrders = Object.values(myOrders.reduce((acc, order) => {
     const itemPrice = getSafePrice(order);
     if (order.batch_id) {
@@ -187,12 +224,10 @@ export default function DriverDashboard({ userInfo }) {
     return acc;
   }, {}));
 
-  // Lọc tách đơn đang chạy và đơn lịch sử
   const historyStatuses = ['completed', 'cancelled', 'cancelled_timeout'];
   const activeMyOrders = groupedMyOrders.filter(o => !historyStatuses.includes(o.status));
   const historyMyOrders = groupedMyOrders.filter(o => historyStatuses.includes(o.status));
 
-  // Hàm render card chung để tránh lặp code
   const renderOrderCard = (order, isHistory) => {
     const driverEarnings = order.calculated_price * 0.8;
     const pickupStr = order.pickup_address?.address_text || order.pickup_address_text || order.pickup_location || order.pickup;
@@ -319,6 +354,48 @@ export default function DriverDashboard({ userInfo }) {
             </div>
             {!isReady && <small className="text-danger d-block mt-3 fw-bold">Hệ thống phân đơn Radar đang tạm dừng!</small>}
         </div>
+
+        {/* BẢN ĐỒ RADAR 1.5KM (Chỉ hiện khi Online) */}
+        {isReady && (
+          <div className="logistics-card p-3 mb-4" style={{ border: '1px solid var(--border-color)', borderRadius: '16px', overflow: 'hidden' }}>
+            <h6 className="fw-bold text-white mb-3 d-flex align-items-center gap-2">
+              <span className="fs-5" style={{ animation: 'pulse 2s infinite' }}>📡</span> RADAR QUÉT ĐƠN (1.5KM)
+            </h6>
+            
+            <div style={{ height: '250px', width: '100%', borderRadius: '12px', overflow: 'hidden' }}>
+              <MapContainer 
+                key={`${driverLocation.lat}-${driverLocation.lng}`} // Ép render lại khi có GPS mới
+                center={[driverLocation.lat, driverLocation.lng]} 
+                zoom={14} 
+                style={{ height: '100%', width: '100%' }}
+                zoomControl={false}
+              >
+                <TileLayer
+                  url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                  attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+                />
+                
+                <Marker position={[driverLocation.lat, driverLocation.lng]}>
+                  <Popup className="fw-bold text-center text-dark">
+                    Vị trí hiện tại của bạn <br/> Đang phát sóng tìm đơn...
+                  </Popup>
+                </Marker>
+                
+                <Circle 
+                  center={[driverLocation.lat, driverLocation.lng]} 
+                  radius={1500} 
+                  pathOptions={{ 
+                    color: '#FF6633', 
+                    fillColor: '#FF6633', 
+                    fillOpacity: 0.15, 
+                    weight: 2, 
+                    dashArray: '5, 5' 
+                  }} 
+                />
+              </MapContainer>
+            </div>
+          </div>
+        )}
         
         {actionMessage && <Alert variant={actionMessage.includes('❌') ? 'danger' : 'success'} className="logistics-card border-0 fw-bold">{actionMessage}</Alert>}
         
