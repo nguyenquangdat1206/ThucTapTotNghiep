@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Container, Button, Alert, Badge, Modal, Form, Row, Col } from 'react-bootstrap';
+import { Container, Button, Alert, Badge, Modal, Form, Row, Col, Nav } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import DashboardSkeleton from '../../components/DashboardSkeleton';
@@ -12,6 +12,9 @@ export default function DriverDashboard({ userInfo }) {
   const [myOrders, setMyOrders] = useState([]); 
   const [actionMessage, setActionMessage] = useState('');
   const [userBalance, setUserBalance] = useState(0); 
+
+  // --- STATE CHIA TAB LỊCH SỬ ---
+  const [driverTab, setDriverTab] = useState('active');
 
   // --- STATE CHO POPUP NỔ ĐƠN TỰ ĐỘNG ---
   const [showIncomingPopup, setShowIncomingPopup] = useState(false);
@@ -26,7 +29,6 @@ export default function DriverDashboard({ userInfo }) {
     return stored !== 'false'; 
   });
 
-  // Sử dụng Refs để tránh bị stale closure (dữ liệu cũ) trong hàm fetchData
   const isReadyRef = useRef(isReady);
   const prevPendingRef = useRef([]);
   const audioRef = useRef(null);
@@ -42,12 +44,10 @@ export default function DriverDashboard({ userInfo }) {
       const resPending = await axios.get(`https://datquang-backend.onrender.com/orders/pending?t=${t}`);
       const newPendingList = resPending.data;
 
-      // THUẬT TOÁN QUÉT ĐƠN MỚI ĐỂ BẬT POPUP NỔ ĐƠN
       if (!isFirstLoad && isReadyRef.current) {
          const newRawOrders = newPendingList.filter(n => !prevPendingRef.current.some(p => p.id === n.id));
          
          if (newRawOrders.length > 0) {
-            // Gom nhóm lại để tính giá Batch nếu có
             const grouped = Object.values(newPendingList.reduce((acc, order) => {
                 const itemPrice = parseFloat(order.total_price) || parseFloat(order.original_price) || parseFloat(order.price) || 0;
                 if (order.batch_id) {
@@ -83,7 +83,7 @@ export default function DriverDashboard({ userInfo }) {
   useEffect(() => {
     const init = async () => {
       setLoading(true);
-      await fetchData(true); // Lần đầu tải trang sẽ không nổ popup
+      await fetchData(true);
       axios.put(`https://datquang-backend.onrender.com/driver/${userInfo.user_id}/toggle_ready?is_ready=${isReady}`).catch(e=>e);
       setTimeout(() => setLoading(false), 600);
     };
@@ -96,7 +96,6 @@ export default function DriverDashboard({ userInfo }) {
       ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
         if (data.event === 'user_banned') { stopAlertSound(); localStorage.removeItem('userInfo'); navigate('/'); return; }
-        // Bất kỳ sự thay đổi trạng thái nào cũng sẽ kích hoạt tải lại dữ liệu để quét đơn mới
         if (data.event === 'status_changed' || data.event === 'urgent_order_alert') {
              fetchData(false); 
         }
@@ -125,7 +124,7 @@ export default function DriverDashboard({ userInfo }) {
     try {
       await axios.put(`https://datquang-backend.onrender.com/orders/${orderId}/accept?driver_id=${userInfo.user_id}`);
       setActionMessage(`🎉 Nhận thành công đơn!`); 
-      fetchData(true); // Bỏ qua quét popup khi tự bấm chốt
+      fetchData(true); 
     } catch (error) { setActionMessage(`❌ Lỗi hoặc đơn đã bị tài xế khác nhận!`); }
   };
 
@@ -145,13 +144,22 @@ export default function DriverDashboard({ userInfo }) {
   };
 
   const stopAlertSound = () => { if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; } };
-  
   const handleLogout = () => { stopAlertSound(); localStorage.removeItem('userInfo'); navigate('/'); };
 
   if (loading) return <DashboardSkeleton />;
 
   const getSafePrice = (order) => { return parseFloat(order.total_price) || parseFloat(order.original_price) || parseFloat(order.price) || 0; };
 
+  const getDriverStatusBadge = (status) => {
+    switch(status) {
+        case 'completed': return <Badge bg="success" className="px-2 py-1 border border-success">Đã hoàn thành</Badge>;
+        case 'cancelled': return <Badge bg="danger" className="px-2 py-1 border border-danger">Đã hủy</Badge>;
+        case 'cancelled_timeout': return <Badge bg="dark" className="px-2 py-1 border border-warning text-warning">Hủy (Quá hạn)</Badge>;
+        default: return <Badge bg="secondary" className="px-2 py-1">{status}</Badge>;
+    }
+  };
+
+  // Gom nhóm đơn chờ nhận
   const groupedPendingOrders = Object.values(pendingOrders.reduce((acc, order) => {
     const itemPrice = getSafePrice(order);
     if (order.batch_id) {
@@ -162,6 +170,7 @@ export default function DriverDashboard({ userInfo }) {
     return acc;
   }, {}));
 
+  // Gom nhóm chuyến đi của tôi
   const groupedMyOrders = Object.values(myOrders.reduce((acc, order) => {
     const itemPrice = getSafePrice(order);
     if (order.batch_id) {
@@ -177,6 +186,98 @@ export default function DriverDashboard({ userInfo }) {
     } else { acc[order.id] = { ...order, is_batch: false, ids: [order.id], calculated_price: itemPrice }; }
     return acc;
   }, {}));
+
+  // Lọc tách đơn đang chạy và đơn lịch sử
+  const historyStatuses = ['completed', 'cancelled', 'cancelled_timeout'];
+  const activeMyOrders = groupedMyOrders.filter(o => !historyStatuses.includes(o.status));
+  const historyMyOrders = groupedMyOrders.filter(o => historyStatuses.includes(o.status));
+
+  // Hàm render card chung để tránh lặp code
+  const renderOrderCard = (order, isHistory) => {
+    const driverEarnings = order.calculated_price * 0.8;
+    const pickupStr = order.pickup_address?.address_text || order.pickup_address_text || order.pickup_location || order.pickup;
+    const dropoffStr = order.dropoff_address?.address_text || order.dropoff_address_text || order.dropoff_location || order.dropoff;
+    
+    return (
+      <div 
+          key={order.ids[0]} 
+          className="logistics-card overflow-hidden p-0 shadow-sm transition-hover"
+          style={{ cursor: 'pointer', border: '1px solid var(--border-color)', opacity: isHistory ? 0.8 : 1 }}
+          onClick={() => navigate(`/order/${order.ids[0]}`)}
+          onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--brand-orange)'}
+          onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--border-color)'}
+      >
+        <div className="p-3 border-bottom" style={{ borderColor: 'var(--border-color)', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+          <div className="d-flex justify-content-between align-items-center mb-1">
+            <h5 className={isHistory ? "text-muted fw-bold mb-0" : "text-danger fw-bold mb-0"} style={{ letterSpacing: '1px' }}>
+              {order.is_batch ? `📦 GHÉP-${order.ids[0]}` : `#${order.id}`}
+            </h5>
+            <div className="d-flex align-items-center gap-2">
+                {isHistory ? getDriverStatusBadge(order.status) : (
+                   <span className="text-warning fw-bold fs-6">
+                     🚚 {userInfo.role === 'driver_express' ? 'Express' : userInfo.role === 'driver_truck' ? 'Truck' : 'Container'}
+                   </span>
+                )}
+            </div>
+          </div>
+          <div className="text-white fw-bold fs-5 mt-1">
+              {driverEarnings > 0 ? `${driverEarnings.toLocaleString()}đ` : 'Đang cập nhật giá...'}
+          </div>
+        </div>
+        
+        <div className="p-3 position-relative">
+           <div className="position-absolute" style={{ left: '23px', top: '32px', bottom: '45px', width: '2px', backgroundColor: 'var(--border-color)', zIndex: 1 }}></div>
+           
+           <div className="d-flex mb-4 position-relative" style={{ zIndex: 2 }}>
+              <div className="me-3 mt-1">
+                 <div style={{width:'14px', height:'14px', borderRadius:'50%', backgroundColor: isHistory ? '#555' : '#FF4D4D', border:'2px solid var(--bg-card)'}}></div>
+              </div>
+              <div className="flex-grow-1">
+                 <div className="d-flex justify-content-between align-items-start mb-1">
+                     <div className="text-muted fw-bold">
+                        Lấy: <span className={isHistory ? "text-muted" : "text-white"}>{order.sender_name || (order.is_batch ? 'Nhiều điểm lấy' : 'Người gửi')}</span>
+                     </div>
+                 </div>
+                 <div className={isHistory ? "text-muted mb-2 fw-bold" : "text-white mb-2 fw-bold"} style={{fontSize: '14.5px', lineHeight: '1.4'}}>
+                    {pickupStr || <span className="text-info fst-italic">Nhấn vào để xem tọa độ / địa chỉ ↗</span>}
+                 </div>
+                 {!isHistory && (
+                    <div>
+                        <span className="fw-bold px-2 py-1" style={{ color: '#FF4D4D', border: '1px solid #FF4D4D', borderRadius: '4px', fontSize: '12px', backgroundColor: 'rgba(255, 77, 77, 0.1)' }}>Lấy ngay</span>
+                    </div>
+                 )}
+              </div>
+           </div>
+
+           <div className="d-flex position-relative" style={{ zIndex: 2 }}>
+              <div className="me-3 mt-1">
+                 <div style={{width:'14px', height:'14px', borderRadius:'50%', backgroundColor: isHistory ? '#555' : '#4ADE80', border:'2px solid var(--bg-card)'}}></div>
+              </div>
+              <div className="flex-grow-1">
+                 <div className="d-flex justify-content-between align-items-start mb-1">
+                     <div className="text-muted fw-bold">
+                        Giao: <span className={isHistory ? "text-muted" : "text-white"}>{order.receiver_name || (order.is_batch ? 'Nhiều điểm giao' : 'Người nhận')}</span>
+                     </div>
+                 </div>
+                 <div className={isHistory ? "text-muted mb-2 fw-bold" : "text-white mb-2 fw-bold"} style={{fontSize: '14.5px', lineHeight: '1.4'}}>
+                    {dropoffStr || <span className="text-info fst-italic">Nhấn vào để xem tọa độ / địa chỉ ↗</span>}
+                 </div>
+                 <div className="d-flex gap-2 align-items-center">
+                    {!isHistory && (
+                        <span className="fw-bold px-2 py-1" style={{ color: '#4ADE80', border: '1px solid #4ADE80', borderRadius: '4px', fontSize: '12px', backgroundColor: 'rgba(74, 222, 128, 0.1)' }}>Giao ngay</span>
+                    )}
+                    {order.distance && (
+                      <span className="fw-bold px-2 py-1 text-muted" style={{ border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--bg-input)' }}>
+                        {parseFloat(order.distance).toFixed(1)} km
+                      </span>
+                    )}
+                 </div>
+              </div>
+           </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <Container fluid className="py-5" style={{ backgroundColor: 'var(--bg-main)', minHeight: '100vh' }}>
@@ -274,98 +375,42 @@ export default function DriverDashboard({ userInfo }) {
             </div>
           )}
 
-          <h5 className="fw-bold text-white mt-5 mb-3 d-flex align-items-center gap-2">
-             <span className="fs-5">🏍️</span> CHUYẾN ĐI CỦA TÔI
-          </h5>
+          {/* KHU VỰC TABS CHUYẾN ĐI (CHIA ĐANG CHẠY & LỊCH SỬ) */}
+          <div className="d-flex justify-content-between align-items-center mt-5 mb-3">
+            <h5 className="fw-bold text-white mb-0 d-flex align-items-center gap-2">
+               <span className="fs-5">🏍️</span> CHUYẾN ĐI CỦA TÔI
+            </h5>
+            <Nav variant="pills" className="gap-2" activeKey={driverTab} onSelect={(k) => setDriverTab(k)}>
+              <Nav.Item>
+                <Nav.Link eventKey="active" className={`fw-bold px-3 py-1 ${driverTab === 'active' ? 'btn-orange text-white' : 'text-muted border'}`} style={{ borderRadius: '20px', borderColor: 'var(--border-color)', fontSize: '13px' }}>Đang chạy</Nav.Link>
+              </Nav.Item>
+              <Nav.Item>
+                <Nav.Link eventKey="history" className={`fw-bold px-3 py-1 ${driverTab === 'history' ? 'btn-orange text-white' : 'text-muted border'}`} style={{ borderRadius: '20px', borderColor: 'var(--border-color)', fontSize: '13px' }}>Lịch sử</Nav.Link>
+              </Nav.Item>
+            </Nav>
+          </div>
           
-          {groupedMyOrders.length === 0 ? (
-            <div className="logistics-card p-4 text-center text-muted fw-bold">Bạn chưa nhận chuyến xe nào.</div>
-          ) : (
-            <div className="d-flex flex-column gap-3">
-              {groupedMyOrders.map((order, idx) => {
-                const driverEarnings = order.calculated_price * 0.8;
-                const pickupStr = order.pickup_address?.address_text || order.pickup_address_text || order.pickup_location || order.pickup;
-                const dropoffStr = order.dropoff_address?.address_text || order.dropoff_address_text || order.dropoff_location || order.dropoff;
-                
-                return (
-                <div 
-                    key={idx} 
-                    className="logistics-card overflow-hidden p-0 shadow-sm transition-hover"
-                    style={{ cursor: 'pointer', border: '1px solid var(--border-color)' }}
-                    onClick={() => navigate(`/order/${order.ids[0]}`)}
-                    onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--brand-orange)'}
-                    onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--border-color)'}
-                >
-                  {/* THANH TRÊN CÙNG */}
-                  <div className="p-3 border-bottom" style={{ borderColor: 'var(--border-color)', backgroundColor: 'rgba(255,255,255,0.02)' }}>
-                    <div className="d-flex justify-content-between align-items-center mb-1">
-                      <h5 className="text-danger fw-bold mb-0" style={{ letterSpacing: '1px' }}>
-                        {order.is_batch ? `📦 GHÉP-${order.ids[0]}` : `#${order.id}`}
-                      </h5>
-                      <div className="d-flex align-items-center gap-2">
-                         <span className="text-warning fw-bold fs-6">
-                           🚚 {userInfo.role === 'driver_express' ? 'Express' : userInfo.role === 'driver_truck' ? 'Truck' : 'Container'}
-                         </span>
-                      </div>
-                    </div>
-                    <div className="text-white fw-bold fs-5 mt-1">
-                        {driverEarnings > 0 ? `${driverEarnings.toLocaleString()}đ` : 'Đang cập nhật giá...'}
-                    </div>
-                  </div>
-                  
-                  {/* CHI TIẾT ĐIỂM LẤY / GIAO */}
-                  <div className="p-3 position-relative">
-                     <div className="position-absolute" style={{ left: '23px', top: '32px', bottom: '45px', width: '2px', backgroundColor: 'var(--border-color)', zIndex: 1 }}></div>
-                     
-                     {/* ĐIỂM LẤY */}
-                     <div className="d-flex mb-4 position-relative" style={{ zIndex: 2 }}>
-                        <div className="me-3 mt-1">
-                           <div style={{width:'14px', height:'14px', borderRadius:'50%', backgroundColor:'#FF4D4D', border:'2px solid var(--bg-card)'}}></div>
-                        </div>
-                        <div className="flex-grow-1">
-                           <div className="d-flex justify-content-between align-items-start mb-1">
-                               <div className="text-muted fw-bold">
-                                  Lấy: <span className="text-white">{order.sender_name || (order.is_batch ? 'Nhiều điểm lấy' : 'Người gửi')}</span>
-                               </div>
-                           </div>
-                           <div className="text-white mb-2 fw-bold" style={{fontSize: '14.5px', lineHeight: '1.4'}}>
-                              {pickupStr || <span className="text-info fst-italic">Nhấn vào để xem tọa độ / địa chỉ ↗</span>}
-                           </div>
-                           <div>
-                              <span className="fw-bold px-2 py-1" style={{ color: '#FF4D4D', border: '1px solid #FF4D4D', borderRadius: '4px', fontSize: '12px', backgroundColor: 'rgba(255, 77, 77, 0.1)' }}>Lấy ngay</span>
-                           </div>
-                        </div>
-                     </div>
-
-                     {/* ĐIỂM GIAO */}
-                     <div className="d-flex position-relative" style={{ zIndex: 2 }}>
-                        <div className="me-3 mt-1">
-                           <div style={{width:'14px', height:'14px', borderRadius:'50%', backgroundColor:'#4ADE80', border:'2px solid var(--bg-card)'}}></div>
-                        </div>
-                        <div className="flex-grow-1">
-                           <div className="d-flex justify-content-between align-items-start mb-1">
-                               <div className="text-muted fw-bold">
-                                  Giao: <span className="text-white">{order.receiver_name || (order.is_batch ? 'Nhiều điểm giao' : 'Người nhận')}</span>
-                               </div>
-                           </div>
-                           <div className="text-white mb-2 fw-bold" style={{fontSize: '14.5px', lineHeight: '1.4'}}>
-                              {dropoffStr || <span className="text-info fst-italic">Nhấn vào để xem tọa độ / địa chỉ ↗</span>}
-                           </div>
-                           <div className="d-flex gap-2 align-items-center">
-                              <span className="fw-bold px-2 py-1" style={{ color: '#4ADE80', border: '1px solid #4ADE80', borderRadius: '4px', fontSize: '12px', backgroundColor: 'rgba(74, 222, 128, 0.1)' }}>Giao ngay</span>
-                              {order.distance && (
-                                <span className="fw-bold px-2 py-1 text-muted" style={{ border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '12px', backgroundColor: 'var(--bg-input)' }}>
-                                  {parseFloat(order.distance).toFixed(1)} km
-                                </span>
-                              )}
-                           </div>
-                        </div>
-                     </div>
-                  </div>
-                </div>
-              )})}
-            </div>
+          {/* RENDER DỮ LIỆU DỰA THEO TAB */}
+          {driverTab === 'active' && (
+             activeMyOrders.length === 0 ? (
+               <div className="logistics-card p-4 text-center text-muted fw-bold">Bạn chưa nhận chuyến xe nào.</div>
+             ) : (
+               <div className="d-flex flex-column gap-3">
+                 {activeMyOrders.map((order, idx) => renderOrderCard(order, false))}
+               </div>
+             )
           )}
+
+          {driverTab === 'history' && (
+             historyMyOrders.length === 0 ? (
+               <div className="logistics-card p-4 text-center text-muted fw-bold">Chưa có dữ liệu lịch sử chuyến đi.</div>
+             ) : (
+               <div className="d-flex flex-column gap-3">
+                 {historyMyOrders.map((order, idx) => renderOrderCard(order, true))}
+               </div>
+             )
+          )}
+
         </div>
 
         {/* MODAL CẬP NHẬT HỒ SƠ */}
@@ -387,7 +432,7 @@ export default function DriverDashboard({ userInfo }) {
           </Form>
         </Modal>
 
-        {/* MODAL NỔ ĐƠN TOÀN MÀN HÌNH MỚI */}
+        {/* MODAL NỔ ĐƠN TOÀN MÀN HÌNH */}
         <Modal show={showIncomingPopup} onHide={() => {}} backdrop="static" centered size="lg" contentClassName="border-0 bg-transparent">
            <div className="p-1 rounded-4 shadow-lg" style={{ background: 'linear-gradient(45deg, #FF4D4D, #FF6633, #4ADE80)', animation: 'pulse-border 1.5s infinite' }}>
              <div className="logistics-card p-4 p-md-5 text-center rounded-4 border-0">

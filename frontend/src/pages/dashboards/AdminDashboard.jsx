@@ -49,8 +49,21 @@ export default function AdminDashboard({ userInfo }) {
       setSupportUsers(resSupport.data);
 
       const completed = resOrders.data.filter(o => o.status === 'completed');
-      setAdminTotalRevenue(completed.reduce((sum, o) => sum + o.price, 0));
-      setAdminPlatformProfit(completed.reduce((sum, o) => sum + (o.price - (o.driver_payout !== null ? o.driver_payout : (o.price * 0.8))), 0));
+      
+      // LOGIC MỚI: Chỉ lấy giá cước gốc (original_price), bỏ qua tip/phụ phí
+      setAdminTotalRevenue(completed.reduce((sum, o) => {
+          const basePrice = parseFloat(o.original_price) || parseFloat(o.price) || 0;
+          return sum + basePrice;
+      }, 0));
+      
+      setAdminPlatformProfit(completed.reduce((sum, o) => {
+          const basePrice = parseFloat(o.original_price) || parseFloat(o.price) || 0;
+          const payout = o.driver_payout !== null && o.driver_payout !== undefined 
+                         ? parseFloat(o.driver_payout) 
+                         : (basePrice * 0.8);
+          return sum + (basePrice - payout);
+      }, 0));
+
     } catch (error) { console.error(error); }
   };
 
