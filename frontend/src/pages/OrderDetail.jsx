@@ -248,7 +248,9 @@ export default function OrderDetail() {
 
   return (
     <Container fluid className="py-5" style={{ backgroundColor: 'var(--bg-main)', minHeight: '100vh' }}>
-      <Container style={{ maxWidth: '1200px' }}>
+      <Container style={{ maxWidth: '1400px' }}>
+        
+        {/* HEADER */}
         <div className="d-flex justify-content-between align-items-center mb-4">
           <h3 className="mb-0 fw-bold" style={{ color: 'var(--brand-orange)' }}>🏷️ {batchOrders.length > 0 ? "Lộ Trình Vận Hành (Đơn Ghép)" : `Chi tiết đơn hàng #${orderDetails.order.id}`}</h3>
           <Button variant="outline-light" style={{ borderColor: 'var(--border-color)' }} onClick={() => navigate(isAdmin ? '/admin' : '/dashboard')}>⬅ Quay lại</Button>
@@ -279,10 +281,12 @@ export default function OrderDetail() {
           </div>
         </div>
 
-        <Row className={isAdmin ? "justify-content-center" : ""}>
-          <Col lg={isAdmin ? 8 : 7} className="mb-4">
+        {/* CHIA 2 CỘT CHO MÀN HÌNH */}
+        <Row className="g-4">
+          
+          {/* CỘT TRÁI: LỘ TRÌNH CÔNG VIỆC */}
+          <Col lg={7} xl={8}>
             
-            {/* LỘ TRÌNH CÔNG VIỆC */}
             <div className="logistics-card mb-4 overflow-hidden">
               <div className="text-white border-bottom py-3 px-4 d-flex align-items-center" style={{ backgroundColor: batchOrders.length > 0 ? '#4ADE80' : 'var(--brand-orange)', borderColor: 'var(--border-color) !important' }}>
                 <h5 className="mb-0 fw-bold text-dark">📦 Lộ Trình Công Việc</h5>
@@ -380,41 +384,9 @@ export default function OrderDetail() {
               </div>
             </div>
 
-            {/* THÔNG TIN LIÊN LẠC ĐƯỢC CHIA RA COMPONENT */}
-            <OrderContactInfo renderOrders={renderOrders} orderDetails={orderDetails} shouldHideInfo={shouldHideInfo} batchOrders={batchOrders} />
-
-            {/* NHẬT KÝ CHAT CHO ADMIN */}
-            {isAdmin && (
-              <div className="logistics-card p-4 mt-4 mb-4" style={{ borderLeft: '4px solid var(--brand-orange)' }}>
-                  <h5 className="fw-bold text-white border-bottom pb-3 mb-3 d-flex align-items-center gap-2" style={{ borderColor: 'var(--border-color) !important' }}>
-                    <span className="fs-4">💬</span> Nhật ký Chat (Khách ↔ Tài xế)
-                  </h5>
-                  {messages.length === 0 ? (
-                    <div className="text-muted fst-italic text-center py-3">Không có cuộc trò chuyện nào được ghi nhận.</div>
-                  ) : (
-                    <div style={{ maxHeight: '350px', overflowY: 'auto' }} className="pe-2">
-                      {messages.map(msg => {
-                        const isSystem = msg.content.includes("HỆ THỐNG:");
-                        if (isSystem) return <div key={msg.id} className="text-center my-3"><Badge bg="danger" className="p-2 fw-normal">{msg.content}</Badge></div>;
-                        
-                        const isDriver = msg.sender_id === orderDetails?.order?.driver_id;
-                        return (
-                          <div key={msg.id} className="mb-3 p-3 rounded border" style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color) !important' }}>
-                            <strong className={isDriver ? 'text-success' : 'text-primary'} style={{ color: isDriver ? '#4ADE80 !important' : 'var(--brand-orange) !important' }}>
-                              {isDriver ? '🛵 Tài xế' : '👤 Khách hàng'}:
-                            </strong> <span className="text-white fw-bold ms-2">{msg.content}</span>
-                            <div className="text-muted mt-2 fw-bold" style={{fontSize: '11px'}}>{new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-              </div>
-            )}
-
             {/* PHẦN ĐÁNH GIÁ CỦA KHÁCH */}
             {orderDetails.order.rating && (
-              <div className="logistics-card p-4 mt-4 mb-4" style={{ borderLeft: '4px solid #FFC107' }}>
+              <div className="logistics-card p-4 mb-4" style={{ borderLeft: '4px solid #FFC107' }}>
                   <h6 className="text-warning mb-3 fw-bold text-uppercase">⭐ Đánh giá từ khách hàng:</h6>
                   <div className="fs-3 mb-2">
                     {[...Array(5)].map((_, index) => <span key={index} style={{ color: index < orderDetails.order.rating ? '#ffc107' : '#333' }}>★</span>)}
@@ -425,7 +397,7 @@ export default function OrderDetail() {
 
             {/* YÊU CẦU KHÁCH ĐÁNH GIÁ */}
             {userInfo.role === 'customer' && orderDetails.order.status === 'completed' && !orderDetails.order.rating && (
-              <div className="logistics-card p-4 mt-4 mb-4 d-flex justify-content-between align-items-center flex-wrap gap-3" style={{ borderLeft: '4px solid #4ADE80' }}>
+              <div className="logistics-card p-4 mb-4 d-flex justify-content-between align-items-center flex-wrap gap-3" style={{ borderLeft: '4px solid #4ADE80' }}>
                   <div>
                     <h5 className="text-success fw-bold mb-2">📝 Chuyến đi đã hoàn thành!</h5>
                     <p className="mb-0 text-muted">Bạn chưa đánh giá chất lượng phục vụ của tài xế.</p>
@@ -435,12 +407,49 @@ export default function OrderDetail() {
             )}
           </Col>
 
-          {/* CỘT PHẢI: KHUNG CHAT TƯƠNG TÁC (ẨN VỚI ADMIN) */}
-          {!isAdmin && (
-            <Col lg={5}>
-              <OrderChatBox orderId={id} userInfo={userInfo} isChatDisabled={isChatDisabled} isBatchClosed={isBatchClosed} messages={messages} fetchMessages={fetchMessages} />
-            </Col>
-          )}
+          {/* CỘT PHẢI: HỒ SƠ LIÊN LẠC & CHAT */}
+          <Col lg={5} xl={4}>
+            <div className="d-flex flex-column gap-4 h-100">
+              
+              {/* HỒ SƠ LIÊN LẠC (Dùng chung cho tất cả các Role) */}
+              <OrderContactInfo renderOrders={renderOrders} orderDetails={orderDetails} shouldHideInfo={shouldHideInfo} batchOrders={batchOrders} />
+
+              {/* NHẬT KÝ CHAT CHO ADMIN */}
+              {isAdmin ? (
+                <div className="logistics-card p-4 d-flex flex-column flex-grow-1" style={{ borderLeft: '4px solid var(--brand-orange)' }}>
+                    <h5 className="fw-bold text-white border-bottom pb-3 mb-3 d-flex align-items-center gap-2" style={{ borderColor: 'var(--border-color) !important' }}>
+                      <span className="fs-4">💬</span> Nhật ký Chat (Khách ↔ Tài xế)
+                    </h5>
+                    {messages.length === 0 ? (
+                      <div className="text-muted fst-italic text-center py-3">Không có cuộc trò chuyện nào được ghi nhận.</div>
+                    ) : (
+                      <div style={{ maxHeight: '500px', overflowY: 'auto' }} className="pe-2 flex-grow-1">
+                        {messages.map(msg => {
+                          const isSystem = msg.content.includes("HỆ THỐNG:");
+                          if (isSystem) return <div key={msg.id} className="text-center my-3"><Badge bg="danger" className="p-2 fw-normal">{msg.content}</Badge></div>;
+                          
+                          const isDriver = msg.sender_id === orderDetails?.order?.driver_id;
+                          return (
+                            <div key={msg.id} className="mb-3 p-3 rounded border" style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color) !important' }}>
+                              <strong className={isDriver ? 'text-success' : 'text-primary'} style={{ color: isDriver ? '#4ADE80 !important' : 'var(--brand-orange) !important' }}>
+                                {isDriver ? '🛵 Tài xế' : '👤 Khách hàng'}:
+                              </strong> <span className="text-white fw-bold ms-2">{msg.content}</span>
+                              <div className="text-muted mt-2 fw-bold" style={{fontSize: '11px'}}>{new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                </div>
+              ) : (
+                /* KHUNG CHAT TƯƠNG TÁC CHO TÀI XẾ/KHÁCH HÀNG */
+                <div className="d-flex flex-column flex-grow-1">
+                  <OrderChatBox orderId={id} userInfo={userInfo} isChatDisabled={isChatDisabled} isBatchClosed={isBatchClosed} messages={messages} fetchMessages={fetchMessages} />
+                </div>
+              )}
+            </div>
+          </Col>
+
         </Row>
 
         {/* MODALS */}
