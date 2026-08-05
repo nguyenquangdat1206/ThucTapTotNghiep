@@ -281,13 +281,14 @@ export default function OrderDetail() {
           </div>
         </div>
 
-        {/* CHIA 2 CỘT CHO MÀN HÌNH */}
-        <Row className="g-4">
+        {/* CHIA 2 CỘT CHO MÀN HÌNH - SỬ DỤNG align-items-stretch ĐỂ 2 CỘT BẰNG NHAU */}
+        <Row className="g-4 align-items-stretch">
           
-          {/* CỘT TRÁI: LỘ TRÌNH CÔNG VIỆC */}
-          <Col lg={7} xl={8}>
+          {/* CỘT TRÁI: LỘ TRÌNH CÔNG VIỆC VÀ HỒ SƠ LIÊN LẠC (Dồn vào flex-column) */}
+          <Col lg={7} xl={8} className="d-flex flex-column gap-4">
             
-            <div className="logistics-card mb-4 overflow-hidden">
+            {/* LỘ TRÌNH CÔNG VIỆC */}
+            <div className="logistics-card overflow-hidden">
               <div className="text-white border-bottom py-3 px-4 d-flex align-items-center" style={{ backgroundColor: batchOrders.length > 0 ? '#4ADE80' : 'var(--brand-orange)', borderColor: 'var(--border-color) !important' }}>
                 <h5 className="mb-0 fw-bold text-dark">📦 Lộ Trình Công Việc</h5>
               </div>
@@ -384,9 +385,12 @@ export default function OrderDetail() {
               </div>
             </div>
 
+            {/* HỒ SƠ LIÊN LẠC (Dời sang cột trái) */}
+            <OrderContactInfo renderOrders={renderOrders} orderDetails={orderDetails} shouldHideInfo={shouldHideInfo} batchOrders={batchOrders} />
+
             {/* PHẦN ĐÁNH GIÁ CỦA KHÁCH */}
             {orderDetails.order.rating && (
-              <div className="logistics-card p-4 mb-4" style={{ borderLeft: '4px solid #FFC107' }}>
+              <div className="logistics-card p-4" style={{ borderLeft: '4px solid #FFC107' }}>
                   <h6 className="text-warning mb-3 fw-bold text-uppercase">⭐ Đánh giá từ khách hàng:</h6>
                   <div className="fs-3 mb-2">
                     {[...Array(5)].map((_, index) => <span key={index} style={{ color: index < orderDetails.order.rating ? '#ffc107' : '#333' }}>★</span>)}
@@ -397,7 +401,7 @@ export default function OrderDetail() {
 
             {/* YÊU CẦU KHÁCH ĐÁNH GIÁ */}
             {userInfo.role === 'customer' && orderDetails.order.status === 'completed' && !orderDetails.order.rating && (
-              <div className="logistics-card p-4 mb-4 d-flex justify-content-between align-items-center flex-wrap gap-3" style={{ borderLeft: '4px solid #4ADE80' }}>
+              <div className="logistics-card p-4 d-flex justify-content-between align-items-center flex-wrap gap-3" style={{ borderLeft: '4px solid #4ADE80' }}>
                   <div>
                     <h5 className="text-success fw-bold mb-2">📝 Chuyến đi đã hoàn thành!</h5>
                     <p className="mb-0 text-muted">Bạn chưa đánh giá chất lượng phục vụ của tài xế.</p>
@@ -407,47 +411,69 @@ export default function OrderDetail() {
             )}
           </Col>
 
-          {/* CỘT PHẢI: HỒ SƠ LIÊN LẠC & CHAT */}
-          <Col lg={5} xl={4}>
-            <div className="d-flex flex-column gap-4 h-100">
-              
-              {/* HỒ SƠ LIÊN LẠC (Dùng chung cho tất cả các Role) */}
-              <OrderContactInfo renderOrders={renderOrders} orderDetails={orderDetails} shouldHideInfo={shouldHideInfo} batchOrders={batchOrders} />
-
-              {/* NHẬT KÝ CHAT CHO ADMIN */}
-              {isAdmin ? (
-                <div className="logistics-card p-4 d-flex flex-column flex-grow-1" style={{ borderLeft: '4px solid var(--brand-orange)' }}>
-                    <h5 className="fw-bold text-white border-bottom pb-3 mb-3 d-flex align-items-center gap-2" style={{ borderColor: 'var(--border-color) !important' }}>
-                      <span className="fs-4">💬</span> Nhật ký Chat (Khách ↔ Tài xế)
+          {/* CỘT PHẢI: FULL KHUNG CHAT TƯƠNG TÁC */}
+          <Col lg={5} xl={4} className="d-flex flex-column">
+            
+            {isAdmin ? (
+              /* GIAO DIỆN CHAT DÀNH RIÊNG CHO ADMIN (GIỐNG ẢNH 2) */
+              <div className="logistics-card p-0 d-flex flex-column h-100 overflow-hidden" style={{ border: '1px solid var(--border-color)', minHeight: '600px' }}>
+                  <div className="p-3 border-bottom d-flex justify-content-between align-items-center" style={{ backgroundColor: 'rgba(255, 255, 255, 0.02)', borderColor: 'var(--border-color) !important' }}>
+                    <h5 className="fw-bold text-white mb-0 d-flex align-items-center gap-2">
+                      <span className="fs-4">💬</span> Kênh Liên Lạc
                     </h5>
-                    {messages.length === 0 ? (
-                      <div className="text-muted fst-italic text-center py-3">Không có cuộc trò chuyện nào được ghi nhận.</div>
-                    ) : (
-                      <div style={{ maxHeight: '500px', overflowY: 'auto' }} className="pe-2 flex-grow-1">
-                        {messages.map(msg => {
-                          const isSystem = msg.content.includes("HỆ THỐNG:");
-                          if (isSystem) return <div key={msg.id} className="text-center my-3"><Badge bg="danger" className="p-2 fw-normal">{msg.content}</Badge></div>;
-                          
-                          const isDriver = msg.sender_id === orderDetails?.order?.driver_id;
+                    {isBatchClosed && <Badge bg="dark" className="border border-secondary px-3 py-2 fw-normal">Đã đóng</Badge>}
+                  </div>
+                  
+                  {messages.length === 0 ? (
+                    <div className="text-muted fst-italic text-center py-5 flex-grow-1">Không có cuộc trò chuyện nào được ghi nhận.</div>
+                  ) : (
+                    <div className="p-4 flex-grow-1" style={{ overflowY: 'auto', maxHeight: '75vh' }}>
+                      {messages.map(msg => {
+                        const isSystem = msg.content.includes("HỆ THỐNG:");
+                        
+                        // Xử lý riêng giao diện cho tin nhắn Hệ thống (Bubble nền xám, chữ trắng)
+                        if (isSystem) {
+                          const cleanContent = msg.content.replace("HỆ THỐNG: ", "");
+                          const icon = cleanContent.includes("thành công") ? "🎉" : "🔴";
                           return (
-                            <div key={msg.id} className="mb-3 p-3 rounded border" style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color) !important' }}>
-                              <strong className={isDriver ? 'text-success' : 'text-primary'} style={{ color: isDriver ? '#4ADE80 !important' : 'var(--brand-orange) !important' }}>
-                                {isDriver ? '🛵 Tài xế' : '👤 Khách hàng'}:
-                              </strong> <span className="text-white fw-bold ms-2">{msg.content}</span>
-                              <div className="text-muted mt-2 fw-bold" style={{fontSize: '11px'}}>{new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                            <div key={msg.id} className="mb-3 p-3 rounded-4 border shadow-sm" style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color) !important' }}>
+                               <strong className="d-block mb-1 text-white fs-6">{icon} HỆ THỐNG:</strong> 
+                               <span className="text-white fw-bold lh-base">{cleanContent}</span>
                             </div>
                           );
-                        })}
+                        }
+                        
+                        // Xử lý tin nhắn của Tài xế / Khách hàng
+                        const isDriver = msg.sender_id === orderDetails?.order?.driver_id;
+                        return (
+                          <div key={msg.id} className="mb-3 p-3 rounded-4 border shadow-sm" style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color) !important' }}>
+                            <strong className={isDriver ? 'text-success' : 'text-primary'} style={{ color: isDriver ? '#4ADE80 !important' : 'var(--brand-orange) !important' }}>
+                              {isDriver ? '🛵 Tài xế' : '👤 Khách hàng'}:
+                            </strong> <span className="text-white fw-bold ms-2 lh-base">{msg.content}</span>
+                            <div className="text-muted mt-2 fw-bold" style={{fontSize: '11px'}}>{new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Thanh Footer báo kênh chat đã đóng */}
+                  <div className="p-3 border-top" style={{ backgroundColor: 'var(--bg-main)', borderColor: 'var(--border-color) !important' }}>
+                      <div className="d-flex align-items-center gap-2">
+                          <div className="flex-grow-1 p-3 rounded border text-muted fw-bold d-flex align-items-center" style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color) !important' }}>
+                             <span className="me-2 text-warning">🔒</span> Kênh chat đã đóng.
+                          </div>
+                          <Button variant="outline-secondary" disabled className="px-4 py-3 fw-bold border-0" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}>Gửi</Button>
                       </div>
-                    )}
-                </div>
-              ) : (
-                /* KHUNG CHAT TƯƠNG TÁC CHO TÀI XẾ/KHÁCH HÀNG */
-                <div className="d-flex flex-column flex-grow-1">
-                  <OrderChatBox orderId={id} userInfo={userInfo} isChatDisabled={isChatDisabled} isBatchClosed={isBatchClosed} messages={messages} fetchMessages={fetchMessages} />
-                </div>
-              )}
-            </div>
+                  </div>
+              </div>
+            ) : (
+              /* KHUNG CHAT TƯƠNG TÁC CHO TÀI XẾ/KHÁCH HÀNG */
+              <div className="h-100">
+                <OrderChatBox orderId={id} userInfo={userInfo} isChatDisabled={isChatDisabled} isBatchClosed={isBatchClosed} messages={messages} fetchMessages={fetchMessages} />
+              </div>
+            )}
+
           </Col>
 
         </Row>
